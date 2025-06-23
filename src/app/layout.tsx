@@ -1,5 +1,5 @@
 "use client";
-
+import "./globals.css";
 import { ThStoreProvider, ThPreferencesProvider } from "@edrlab/thorium-web/epub";
 import React from "react";
 
