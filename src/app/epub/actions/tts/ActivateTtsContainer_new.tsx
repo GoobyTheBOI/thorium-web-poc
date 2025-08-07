@@ -4,7 +4,6 @@ import { useAppSelector, useAppDispatch } from "@edrlab/thorium-web/epub";
 import { TtsActionKeys } from "../../keys";
 import { IVoices } from "readium-speech";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ThContainerHeader, ThPopover, ThActionButton, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
 import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
 import { IAdapterConfig, IContextualPlaybackAdapter } from "@/preferences/types";
 import { TTSAdapterFactory } from "@/lib/AdapterFactory";
@@ -38,7 +37,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     const voiceServiceRef = useRef<IVoiceManagementService | null>(null);
     const textExtractionServiceRef = useRef<ITextExtractionService | null>(null);
 
-    const isOpen = useAppSelector((state: any) => {
+    const isOpen = useAppSelector(state => {
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
     });
 
@@ -88,7 +87,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 setIsPaused(false);
             });
 
-            ttsServiceRef.current.on('error', (info: any) => {
+            ttsServiceRef.current.on('error', (info) => {
                 setVoicesError(`TTS Error: ${info.error?.message || 'Unknown error'}`);
                 setIsPlaying(false);
                 setIsPaused(false);
@@ -194,131 +193,64 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         };
     }, []);
 
-    if (!isOpen) return null;
-
-    const handleClose = () => {
-        cleanupTts(); // Stop any playing audio using SOLID services
-        dispatch({
-            type: "actions/setActionOpen",
-            payload: {
-                key: TtsActionKeys.activateTts,
-                isOpen: false
-            }
-        });
-    };
-
-    // Status message helper (SOLID: Single Responsibility)
-    const getStatusMessage = () => {
-        if (isGeneratingAudio) return "Generating audio...";
-        if (isPlaying) return "Playing with SOLID architecture";
-        if (isPaused) return "Paused";
-        return "Ready";
-    };
-
     return (
-        <ThPopover
-            triggerRef={props.triggerRef}
-            isOpen={isOpen}
-            onOpenChange={handleClose}
-            key={`${TtsActionKeys.activateTts}`}
-            style={{
-                width: "400px",
-                maxHeight: "80vh",
-                overflowY: "auto",
-                backgroundColor: "#fff",
-                borderRadius: "8px",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                padding: "20px",
-                position: "fixed",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)"
-            }}
-        >
-            <ThContainerHeader
-                label="Text-to-Speech (SOLID Architecture)"
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-            >
-                <ThCloseButton onPress={handleClose}>
-                    Close
-                </ThCloseButton>
-            </ThContainerHeader>
+        <div className="tts-container">
+            <h3>Text-to-Speech (SOLID Architecture)</h3>
 
-            <ThContainerBody>
-                {voicesError && (
-                    <div style={{ marginBottom: "15px", padding: "10px", backgroundColor: "#ffebee", borderRadius: "4px" }}>
-                        <p style={{ color: "#c62828", fontSize: "12px" }}>
-                            Error: {voicesError}
-                        </p>
-                    </div>
+            {voicesError && (
+                <div className="error-message" style={{ color: 'red', marginBottom: '10px' }}>
+                    {voicesError}
+                </div>
+            )}
+
+            <div className="voice-selection" style={{ marginBottom: '10px' }}>
+                <label>Voice: </label>
+                {isLoadingVoices ? (
+                    <span>Loading voices...</span>
+                ) : (
+                    <select
+                        value={selectedVoice || ''}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                        disabled={isGeneratingAudio || isPlaying}
+                    >
+                        <option value="">Select a voice</option>
+                        {voices.map((voice) => (
+                            <option key={voice.voiceURI} value={voice.voiceURI}>
+                                {voice.name}
+                            </option>
+                        ))}
+                    </select>
                 )}
+            </div>
 
-                <div style={{ marginBottom: "20px" }}>
-                    <p style={{ fontSize: "14px", marginBottom: "10px" }}>
-                        Status: {getStatusMessage()}
-                    </p>
-                </div>
+            <div className="tts-controls" style={{ display: 'flex', gap: '10px' }}>
+                <button
+                    onClick={handleGenerateTts}
+                    disabled={!selectedVoice || isGeneratingAudio || isPlaying}
+                >
+                    {isGeneratingAudio ? 'Generating...' : 'Start TTS'}
+                </button>
 
-                <div className="voice-selection" style={{ marginBottom: "15px" }}>
-                    <label style={{ display: "block", marginBottom: "5px", fontSize: "14px" }}>
-                        Voice Selection:
-                    </label>
-                    {isLoadingVoices ? (
-                        <span style={{ fontSize: "12px", color: "#666" }}>Loading voices...</span>
-                    ) : (
-                        <select
-                            value={selectedVoice || ''}
-                            onChange={(e) => setSelectedVoice(e.target.value)}
-                            disabled={isGeneratingAudio || isPlaying}
-                            style={{
-                                width: "100%",
-                                padding: "8px",
-                                borderRadius: "4px",
-                                border: "1px solid #ddd"
-                            }}
-                        >
-                            <option value="">Select a voice</option>
-                            {voices.map((voice) => (
-                                <option key={voice.voiceURI} value={voice.voiceURI}>
-                                    {voice.name}
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                </div>
+                <button
+                    onClick={isPaused ? handleResume : handlePause}
+                    disabled={!isPlaying && !isPaused}
+                >
+                    {isPaused ? 'Resume' : 'Pause'}
+                </button>
 
-                <div style={{ marginTop: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <ThActionButton
-                        isDisabled={!selectedVoice || isGeneratingAudio || isPlaying}
-                        onClick={handleGenerateTts}
-                        style={{ backgroundColor: "#4CAF50", color: "white" }}
-                    >
-                        {isGeneratingAudio ? 'Generating...' : 'Start TTS'}
-                    </ThActionButton>
+                <button
+                    onClick={handleStop}
+                    disabled={!isPlaying && !isPaused}
+                >
+                    Stop
+                </button>
+            </div>
 
-                    <ThActionButton
-                        onClick={isPaused ? handleResume : handlePause}
-                        isDisabled={!isPlaying && !isPaused}
-                        style={{ backgroundColor: "#FF9800", color: "white" }}
-                    >
-                        {isPaused ? 'Resume' : 'Pause'}
-                    </ThActionButton>
-
-                    <ThActionButton
-                        onClick={handleStop}
-                        isDisabled={!isPlaying && !isPaused}
-                        style={{ backgroundColor: "#f44336", color: "white" }}
-                    >
-                        Stop
-                    </ThActionButton>
-                </div>
-
-                <div style={{ marginTop: "15px", fontSize: "12px", color: "#666" }}>
-                    <p>• SOLID Design Principles: Single Responsibility, Open/Closed, Dependency Inversion</p>
-                    <p>• Service-oriented architecture with proper separation of concerns</p>
-                    <p>• Dependency injection for testable and maintainable code</p>
-                </div>
-            </ThContainerBody>
-        </ThPopover>
+            <div className="status" style={{ marginTop: '10px' }}>
+                {isPlaying && <span style={{ color: 'green' }}>🔊 Playing</span>}
+                {isPaused && <span style={{ color: 'orange' }}>⏸️ Paused</span>}
+                {!isPlaying && !isPaused && <span style={{ color: 'gray' }}>⏹️ Stopped</span>}
+            </div>
+        </div>
     );
 };

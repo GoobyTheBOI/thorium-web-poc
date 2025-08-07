@@ -4,6 +4,7 @@ import { MANIFEST_CONFIG } from "@/config/manifest";
 
 import { PublicationGrid } from "@edrlab/thorium-web/epub";
 import Image from "next/image";
+import { SOLIDTtsContainer } from "@/Components/SOLIDTtsContainer";
 
 import "./base.css";
 import "./home.css";
@@ -61,9 +62,9 @@ export default function Home() {
     <main id="home">
       <header className="header">
         <figure className="logo-container">
-          <Image 
-            src="/images/ReadiumLogo.png" 
-            alt="Readium Logo" 
+          <Image
+            src="/images/ReadiumLogo.png"
+            alt="Readium Logo"
             width={ 60 }
             height={ 60 }
             priority
@@ -90,7 +91,7 @@ export default function Home() {
         <>
         <div className="dev-books">
           <p>In dev you can also use the <code>/manifest/</code> route to load any publication. For instance:</p>
-          
+
           <PublicationGrid
             publications={ onlineBooks }
             renderCover={ (publication) => (
@@ -106,6 +107,9 @@ export default function Home() {
         </div>
         </>
       ) }
+
+      {/* SOLID TTS Architecture Demo */}
+      <SOLIDTtsContainer />
     </main>
   );
 }

@@ -1,18 +1,14 @@
 export interface TextChunk {
     text: string;
-    element?: HTMLElement;
-}
-
-export interface TTSRequestChunk {
-    text: string;
     element?: string;
 }
 
 export interface TTSRequestBody {
-    text: TTSRequestChunk[];
+    text: TextChunk[];
     voiceId: string;
     modelId?: string;
     useContext?: boolean;
+    previousRequestIds?: string[];
 }
 
 export interface TTSErrorResponse {
@@ -33,7 +29,7 @@ export const TTS_CONSTANTS = {
     MAX_TEXT_LENGTH: 5000,
     DEFAULT_MODEL: 'eleven_multilingual_v2',
     DEFAULT_VOICE_ID: 'JBFqnCBsd6RMkjVDRZzb',
-    CHUNK_SIZE_FOR_TESTING: 2,
+    CHUNK_SIZE_FOR_TESTING: 1,
     MAX_CHUNKS: 5,
 } as const;
 
