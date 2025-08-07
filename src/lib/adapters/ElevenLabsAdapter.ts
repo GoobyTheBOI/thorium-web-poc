@@ -1,4 +1,3 @@
-import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import type {
     IContextualPlaybackAdapter,
     IAdapterConfig,
@@ -10,7 +9,7 @@ import { TextChunk } from '@/types/tts';
 export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
     private readonly config: IAdapterConfig;
     private readonly textProcessor: ITextProcessor;
-    private readonly eventListeners: Map<string, ((info: any) => void)[]> = new Map();
+    private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
 
     // Audio state management
     private currentAudio: HTMLAudioElement | null = null;
@@ -165,14 +164,14 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
         }
     }
 
-    on(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: any) => void): void {
+    on(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void): void {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, []);
         }
         this.eventListeners.get(event)!.push(callback);
     }
 
-    off(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: any) => void): void {
+    off(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void): void {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             const index = listeners.indexOf(callback);
@@ -201,7 +200,7 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
         }
     }
 
-    private emitEvent(event: string, info: any): void {
+    private emitEvent(event: string, info: unknown): void {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {

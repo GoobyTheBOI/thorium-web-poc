@@ -1,7 +1,5 @@
-import { DefaultTextProcessor } from '@/lib/TextProcessor';
 import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
-import { chunk } from '@elevenlabs/elevenlabs-js/api/resources/conversationalAi/resources/knowledgeBase/resources/documents';
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 

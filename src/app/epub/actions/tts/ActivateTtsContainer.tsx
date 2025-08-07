@@ -1,6 +1,6 @@
 'use client';
 
-import { useAppSelector, useAppDispatch } from "@edrlab/thorium-web/epub";
+import { useAppSelector, useAppDispatch, RootState } from "@edrlab/thorium-web/epub";
 import { TtsActionKeys } from "../../keys";
 import { IVoices } from "readium-speech";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -38,7 +38,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     const voiceServiceRef = useRef<IVoiceManagementService | null>(null);
     const textExtractionServiceRef = useRef<ITextExtractionService | null>(null);
 
-    const isOpen = useAppSelector((state: any) => {
+    const isOpen = useAppSelector((state: RootState) => {
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
     });
 
@@ -88,8 +88,8 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 setIsPaused(false);
             });
 
-            ttsServiceRef.current.on('error', (info: any) => {
-                setVoicesError(`TTS Error: ${info.error?.message || 'Unknown error'}`);
+            ttsServiceRef.current.on('error', (info: unknown) => {
+                setVoicesError(`TTS Error: ${info?.error?.message || 'Unknown error'}`);
                 setIsPlaying(false);
                 setIsPaused(false);
             });

@@ -4,7 +4,6 @@ import { MANIFEST_CONFIG } from "@/config/manifest";
 
 import { PublicationGrid } from "@edrlab/thorium-web/epub";
 import Image from "next/image";
-import { SOLIDTtsContainer } from "@/Components/SOLIDTtsContainer";
 
 import "./base.css";
 import "./home.css";
@@ -107,9 +106,6 @@ export default function Home() {
         </div>
         </>
       ) }
-
-      {/* SOLID TTS Architecture Demo */}
-      <SOLIDTtsContainer />
     </main>
   );
 }

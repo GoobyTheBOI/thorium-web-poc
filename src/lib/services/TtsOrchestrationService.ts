@@ -9,12 +9,12 @@ export interface ITtsOrchestrationService {
     stopReading(): void;
     isPlaying(): boolean;
     isPaused(): boolean;
-    on(event: string, callback: (info: any) => void): void;
+    on(event: string, callback: (info: unknown) => void): void;
 }
 
 export class TtsOrchestrationService implements ITtsOrchestrationService {
     private requestIds: string[] = [];
-    private eventListeners: Map<string, ((info: any) => void)[]> = new Map();
+    private eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
 
     constructor(
         private adapter: IContextualPlaybackAdapter,
@@ -80,7 +80,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
         return this.adapter.getIsPaused?.() || false;
     }
 
-    on(event: string, callback: (info: any) => void): void {
+    on(event: string, callback: (info: unknown) => void): void {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, []);
         }
@@ -121,7 +121,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
         });
     }
 
-    private emitEvent(event: string, info: any): void {
+    private emitEvent(event: string, info: unknown): void {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {
