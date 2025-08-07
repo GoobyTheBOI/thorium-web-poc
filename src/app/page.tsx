@@ -1,82 +1,111 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { HttpFetcher, Link } from "@readium/shared";
-import { useAppSelector } from "@edrlab/thorium-web/epub";
-import { MyCustomReader } from "./MyCustomReader";
-import { ThPreferencesProvider } from "@edrlab/thorium-web/epub";
+import { MANIFEST_CONFIG } from "@/config/manifest";
 
-export default function Home({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const [isClient, setIsClient] = useState(false);
-  const [params, setParams] = useState<{ [key: string]: string | string[] | undefined } | null>(null);
-  const [error, setError] = useState("");
-  const [manifest, setManifest] = useState<object | undefined>(undefined);
-  const [selfLink, setSelfLink] = useState<string | undefined>(undefined);
+import { PublicationGrid } from "@edrlab/thorium-web/epub";
+import Image from "next/image";
 
-  useAppSelector(state => state.reader.isLoading);
+import "./base.css";
+import "./home.css";
 
-  useEffect(() => {
-    setIsClient(true);
-    searchParams.then((params) => setParams(params));
-  }, [searchParams]);
+const books = [
+  {
+    title: "Moby Dick",
+    author: "Herman Melville",
+    cover: "/images/MobyDick.jpg",
+    url: "/read/moby-dick",
+    rendition: "Reflowable"
+  },
+  {
+    title: "The House of the Seven Gables",
+    author: "Nathaniel Hawthorne",
+    cover: "/images/TheHouseOfTheSevenGables.jpg",
+    url: "/read/the-house-of-seven-gables",
+    rendition: "Reflowable"
+  },
+  {
+    title: "Les Diaboliques",
+    author: "Jules Barbey d'Aurevilly",
+    cover: "/images/LesDiaboliques.png",
+    url: "/read/les-diaboliques",
+    rendition: "Reflowable"
+  },
+  {
+    title: "Bella the Dragon",
+    author: "Barbara Nick, Elaine Steckler",
+    cover: "/images/Bella.jpg",
+    url: "/read/bella-the-dragon",
+    rendition: "Fixed Layout"
+  }
+];
 
+const onlineBooks = [
+  {
+    title: "Accessible EPUB3",
+    author: "Matt Garrish",
+    cover: "/images/accessibleEpub3.jpg",
+    url: "/read/manifest/https%3A%2F%2Fpublication-server.readium.org%2FaHR0cHM6Ly9naXRodWIuY29tL0lEUEYvZXB1YjMtc2FtcGxlcy9yZWxlYXNlcy9kb3dubG9hZC8yMDIzMDcwNC9hY2Nlc3NpYmxlX2VwdWJfMy5lcHVi%2Fmanifest.json",
+    rendition: "Reflowable"
+  },
+  {
+    title: "Children Literature",
+    author: "Charles Madison Curry, Erle Elsworth Clippinger",
+    cover: "/images/ChildrensLiterature.png",
+    url: "/read/manifest/https%3A%2F%2Fpublication-server.readium.org%2FaHR0cHM6Ly9naXRodWIuY29tL0lEUEYvZXB1YjMtc2FtcGxlcy9yZWxlYXNlcy9kb3dubG9hZC8yMDIzMDcwNC9jaGlsZHJlbnMtbGl0ZXJhdHVyZS5lcHVi%2Fmanifest.json",
+    rendition: "Reflowable"
+  }
+];
 
-  useEffect(() => {
-    if (params && isClient) {
-      let book = "moby-dick";
-      let publicationURL = "";
-      if (params["book"]) {
-        book = Array.isArray(params["book"]) ? params["book"][0] : params["book"];
-      }
-
-      if (book.startsWith("http://") || book.startsWith("https://")) {
-        // TODO: use URL.canParse()
-        // Make sure streamer gets Base64Url
-        const bookUrl = new URL(book);
-        const bookPathnameArray = bookUrl.pathname.split("/");
-        const sanitizedBookPathnameArray = bookPathnameArray.map((entry) => {
-          if (entry && entry !== "manifest.json") {
-            return entry.replace(/\+|%2B/g, "-").replace(/\/|%2F/g, "_").replace(/=|%3D/g, "");
-          } else {
-            return entry;
-          }
-        });
-        const sanitizedBook = new URL(sanitizedBookPathnameArray.join("/"), bookUrl.origin);
-        publicationURL = sanitizedBook.href;
-
-        if (!publicationURL.endsWith("manifest.json") && !publicationURL.endsWith("/"))
-          publicationURL += "/";
-      } else {
-        throw new Error("book parameter is required");
-      }
-
-      const manifestLink = new Link({ href: "manifest.json" });
-      const fetcher = new HttpFetcher(undefined, publicationURL);
-      const fetched = fetcher.get(manifestLink);
-      fetched.link().then((link) => {
-        setSelfLink(link.toURL(publicationURL));
-      });
-
-      fetched.readAsJSON().then((manifestData) => {
-        setManifest(manifestData as object);
-      }).catch((error) => {
-        console.error("Error loading manifest:", error);
-        setError(`Failed loading manifest ${publicationURL}: ${error.message}`);
-      });
-    }
-  }, [params, isClient]);
-
-
+export default function Home() {
   return (
-    <>
-        <ThPreferencesProvider>
-          <h1>Thorium Web Reader</h1>
-            {isClient && manifest && selfLink &&
-              <MyCustomReader rawManifest={manifest} selfHref={selfLink} />
-            }
-            {error && <div className="error">{error}</div>}
-        </ThPreferencesProvider>
-    </>
+    <main id="home">
+      <header className="header">
+        <figure className="logo-container">
+          <Image 
+            src="/images/ReadiumLogo.png" 
+            alt="Readium Logo" 
+            width={ 60 }
+            height={ 60 }
+            priority
+          />
+        </figure>
+        <h1>Welcome to Readium Playground</h1>
+        <p className="subtitle">Reference implementation of <a href="https://github.com/edrlab/thorium-web">Thorium Web</a>, <a href="https://github.com/readium/web">Readium Web</a> and <a href="https://github.com/readium/css">Readium CSS</a>.</p>
+      </header>
 
+      <PublicationGrid
+        publications={ books }
+        renderCover={ (publication) => (
+          <Image
+            src={ publication.cover }
+            alt=""
+            loading="lazy"
+            width={ 120 }
+            height={ 180 }
+          />
+        ) }
+      />
+
+      { MANIFEST_CONFIG.enabled && (
+        <>
+        <div className="dev-books">
+          <p>In dev you can also use the <code>/manifest/</code> route to load any publication. For instance:</p>
+          
+          <PublicationGrid
+            publications={ onlineBooks }
+            renderCover={ (publication) => (
+              <Image
+                src={ publication.cover }
+                alt=""
+                loading="lazy"
+                width={ 120 }
+                height={ 180 }
+              />
+            ) }
+          />
+        </div>
+        </>
+      ) }
+    </main>
   );
 }
