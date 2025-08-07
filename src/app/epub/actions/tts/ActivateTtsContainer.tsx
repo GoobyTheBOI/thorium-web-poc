@@ -20,6 +20,7 @@ import {
     VoiceManagementService,
     IVoiceManagementService
 } from "@/lib/services/VoiceManagementService";
+import { ShortcutConfig } from "@/lib/services/KeyboardShortcutService";
 
 export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (props) => {
     const dispatch = useAppDispatch();
@@ -32,6 +33,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
+    const [keyboardShortcuts, setKeyboardShortcuts] = useState<ShortcutConfig[]>([]);
 
     // Service references (SOLID: Dependency Inversion)
     const ttsServiceRef = useRef<ITtsOrchestrationService | null>(null);
@@ -62,6 +64,9 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             ttsServiceRef.current = new TtsOrchestrationService(adapter, textExtractionServiceRef.current);
             voiceServiceRef.current = new VoiceManagementService();
 
+            // Get registered shortcuts
+            setKeyboardShortcuts(ttsServiceRef.current.getShortcuts());
+
             // Set up service event listeners (SOLID: Open/Closed)
             ttsServiceRef.current.on('play', () => {
                 setIsPlaying(true);
@@ -89,7 +94,8 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             });
 
             ttsServiceRef.current.on('error', (info: unknown) => {
-                setVoicesError(`TTS Error: ${info?.error?.message || 'Unknown error'}`);
+                const errorInfo = info as { error?: { message?: string } };
+                setVoicesError(`TTS Error: ${errorInfo.error?.message || 'Unknown error'}`);
                 setIsPlaying(false);
                 setIsPaused(false);
             });
@@ -215,6 +221,17 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         return "Ready";
     };
 
+    // Format shortcut display
+    const formatShortcut = (shortcut: ShortcutConfig): string => {
+        const modifiers = [];
+        if (shortcut.ctrlKey) modifiers.push('Ctrl');
+        if (shortcut.altKey) modifiers.push('Alt');
+        if (shortcut.shiftKey) modifiers.push('Shift');
+        
+        const key = shortcut.key === ' ' ? 'Space' : shortcut.key.toUpperCase();
+        return `${modifiers.join('+')}${modifiers.length > 0 ? '+' : ''}${key}`;
+    };
+
     return (
         <ThPopover
             triggerRef={props.triggerRef}
@@ -313,10 +330,26 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     </ThActionButton>
                 </div>
 
+                {/* Keyboard Shortcuts Section */}
+                <div style={{ marginTop: "20px", fontSize: "12px", backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px" }}>
+                    <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "bold" }}>
+                        Keyboard Shortcuts:
+                    </h4>
+                    {keyboardShortcuts.map((shortcut, index) => (
+                        <div key={index} style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
+                            <span>{shortcut.description}:</span>
+                            <code style={{ backgroundColor: "#e0e0e0", padding: "2px 4px", borderRadius: "3px" }}>
+                                {formatShortcut(shortcut)}
+                            </code>
+                        </div>
+                    ))}
+                </div>
+
                 <div style={{ marginTop: "15px", fontSize: "12px", color: "#666" }}>
                     <p>• SOLID Design Principles: Single Responsibility, Open/Closed, Dependency Inversion</p>
                     <p>• Service-oriented architecture with proper separation of concerns</p>
                     <p>• Dependency injection for testable and maintainable code</p>
+                    <p>• Keyboard shortcuts enabled globally when TTS is active</p>
                 </div>
             </ThContainerBody>
         </ThPopover>
