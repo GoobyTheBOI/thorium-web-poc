@@ -4,7 +4,7 @@ export interface TextChunk {
 }
 
 export interface TTSRequestBody {
-    text: TextChunk[];
+    text: string;
     voiceId: string;
     modelId?: string;
     useContext?: boolean;

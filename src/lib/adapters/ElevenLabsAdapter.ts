@@ -28,8 +28,9 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
     async playWithContext(textChunk: TextChunk, previousRequestIds?: string[]): Promise<{
         requestId: string | null;
     }> {
-        const { text, elementType } = this.getTextAndElementType(textChunk);
-        this.validateAndFormatText(text);
+        this.validateAndFormatText(textChunk.text);
+
+        const combinedText = this.textProcessor.formatText(textChunk.text, textChunk.element || 'normal');
 
         try {
             this.cleanup();
@@ -40,7 +41,7 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    text: [textChunk],
+                    text: combinedText,
                     voiceId: this.config.voiceId,
                     modelId: this.config.modelId,
                     useContext: true,
@@ -77,46 +78,7 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
     }
 
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
-        // console.log(`Play text: "${textChunk.text}" of type: ${textChunk.element}`);
-        // const { text, elementType } = this.getTextAndElementType(textChunk);
-        // this.validateAndFormatText(text);
-
-        // try {
-        //     // Clean up any existing audio
-        //     this.cleanup();
-
-
-
-        //     const audioStream = await this.elevenlabs.textToSpeech.stream(this.config.voiceId, {
-        //         text: this.textProcessor.formatText(text, elementType),
-        //         modelId: this.config.modelId,
-        //     });
-
-        //     const buffer = await this.streamToBuffer(audioStream);
-
-        //     // Create audio element for playback control
-        //     const audioBlob = new Blob([buffer], { type: 'audio/mpeg' });
-        //     const audioUrl = URL.createObjectURL(audioBlob);
-        //     this.currentAudio = new Audio(audioUrl);
-
-        //     // Set up audio event listeners
-        //     this.setupAudioEvents();
-
-        //     // Start playback
-        //     await this.currentAudio.play();
-        //     this.isPlaying = true;
-        //     this.isPaused = false;
-
-        //     this.emitEvent('play', { audio: this.currentAudio });
-
-        //     return buffer as T;
-        // } catch (error) {
-        //     const ttsError = this.createError('PLAY_FAILED', 'Failed to generate audio', error);
-        //     this.emitEvent('end', { success: false, error: ttsError });
-        //     throw ttsError;
-        // }
-        const { text, elementType } = this.getTextAndElementType(textChunk);
-        this.validateAndFormatText(text);
+        this.validateAndFormatText(textChunk.text);
 
         try {
             this.cleanup();
@@ -131,7 +93,7 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
                     voiceId: this.config.voiceId,
                     modelId: this.config.modelId,
                     useContext: true,
-                    previousRequestIds: previousRequestIds
+                    previousRequestIds: undefined
                 }),
             });
 
@@ -258,29 +220,6 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
             message,
             details: process.env.NODE_ENV === 'development' ? details : undefined
         };
-    }
-
-    private async streamToBuffer(audioStream: ReadableStream<Uint8Array>): Promise<Buffer> {
-        const chunks: Uint8Array[] = [];
-        const reader = audioStream.getReader();
-
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-            }
-            return Buffer.concat(chunks);
-        } finally {
-            reader.releaseLock();
-        }
-    }
-
-    private getTextAndElementType(textChunk: TextChunk): { text: string; elementType: string } {
-        const text = textChunk.text;
-        const elementType = textChunk.element || 'normal';
-
-        return { text, elementType };
     }
 
     // Setup audio event listeners

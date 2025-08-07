@@ -1,6 +1,7 @@
 import { DefaultTextProcessor } from '@/lib/TextProcessor';
 import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+import { chunk } from '@elevenlabs/elevenlabs-js/api/resources/conversationalAi/resources/knowledgeBase/resources/documents';
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 
@@ -32,18 +33,9 @@ export default async function handler(
             apiKey: process.env.ELEVENLABS_API_KEY
         });
 
-        const textProcessor = new DefaultTextProcessor();
-
-        // Handle array of text chunks
-        const combinedText = text.map(chunk =>
-            textProcessor.formatText(chunk.text, chunk.element || 'normal')
-        ).join(' ');
-
-        console.log(`Combined text length: ${combinedText.length} characters`);
-
         const response = await elevenlabs.textToSpeech
             .convert(voiceId, {
-                text: combinedText,
+                text: text,
                 modelId,
                 previousRequestIds: useContext ? previousRequestIds : undefined,
             })
@@ -51,8 +43,6 @@ export default async function handler(
 
         const audioBuffer = await streamToBuffer(response.data);
         const requestId = response.rawResponse.headers.get("request-id");
-
-        console.log(`Generated audio: ${audioBuffer.length} bytes, requestId: ${requestId}`);
 
         res.setHeader('Content-Type', 'audio/mpeg');
         res.setHeader('x-request-id', requestId || `elevenlabs-${Date.now()}`);

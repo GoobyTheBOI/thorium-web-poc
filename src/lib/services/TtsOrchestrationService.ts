@@ -1,4 +1,4 @@
-import { TextChunk, TTS_CONSTANTS } from '@/types/tts';
+import { TTS_CONSTANTS } from '@/types/tts';
 import { IContextualPlaybackAdapter } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 
@@ -37,7 +37,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
                 console.log(`Processing chunk ${i + 1}/${chunksToSend.length}:`, {
                     element: textChunk.element,
-                    text: textChunk.text?.substring(0, 50) + '...'
+                    text: textChunk.text
                 });
 
                 const result = await this.adapter.playWithContext(
