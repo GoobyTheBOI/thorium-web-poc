@@ -2,7 +2,8 @@ import type {
     IContextualPlaybackAdapter,
     IAdapterConfig,
     ITextProcessor,
-    ITTSError
+    ITTSError,
+    IPlaybackAdapter
 } from '@/preferences/types';
 import { TextChunk } from '@/types/tts';
 
@@ -19,7 +20,7 @@ interface PlayResult {
     audio: HTMLAudioElement;
 }
 
-export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
+export class ElevenLabsAdapter implements IPlaybackAdapter, IContextualPlaybackAdapter {
     private readonly config: IAdapterConfig;
     private readonly textProcessor: ITextProcessor;
     private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
@@ -59,8 +60,10 @@ export class ElevenLabsAdapter implements IContextualPlaybackAdapter {
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
         this.validateAndFormatText(textChunk.text);
 
+        const processedText = this.textProcessor.formatText(textChunk.text, textChunk.element || 'normal');
+
         const requestConfig: PlayRequestConfig = {
-            text: [textChunk],
+            text: processedText,
             voiceId: this.config.voiceId,
             modelId: this.config.modelId,
             useContext: true,

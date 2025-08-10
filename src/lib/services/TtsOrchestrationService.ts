@@ -1,5 +1,5 @@
 import { TTS_CONSTANTS } from '@/types/tts';
-import { IContextualPlaybackAdapter } from '@/preferences/types';
+import { IContextualPlaybackAdapter, IPlaybackAdapter } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 import { IKeyboardShortcutService, KeyboardShortcutService, ShortcutConfig } from './KeyboardShortcutService';
 
@@ -24,7 +24,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     private isExecuting: boolean = false; // Prevent concurrent operations
 
     constructor(
-        private adapter: IContextualPlaybackAdapter,
+        private adapter: IPlaybackAdapter,
         private textExtractor: ITextExtractionService
     ) {
         this.setupAdapterEvents();
@@ -63,14 +63,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
                     text: textChunk.text
                 });
 
-                const result = await this.adapter.playWithContext(
-                    textChunk,
-                    this.requestIds.length > 0 ? this.requestIds : undefined
-                );
-
-                if (result.requestId) {
-                    this.requestIds.push(result.requestId);
-                }
+                await this.adapter.play(textChunk);
             }
 
             this.emitEvent('reading-started', { chunks: chunksToSend });

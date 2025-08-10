@@ -24,7 +24,7 @@ export interface IPlaybackAdapter extends IAudioPlayback, IPlaybackEvents {
     voices?: IVoiceProvider;
 }
 
-export interface IContextualPlaybackAdapter extends IPlaybackAdapter {
+export interface IContextualPlaybackAdapter {
     playWithContext(textChunk: TextChunk, requestIds?: string[]): Promise<{
         requestId: string | null;
     }>;
@@ -48,7 +48,7 @@ export interface ITTSError {
 }
 
 export interface IAdapterFactory {
-    createAdapter(type: 'elevenlabs' | 'web-speech', config: IAdapterConfig): IContextualPlaybackAdapter;
+    createAdapter(type: 'elevenlabs' | 'web-speech', config: IAdapterConfig): IPlaybackAdapter;
 }
 
 export interface VoiceInfo {
