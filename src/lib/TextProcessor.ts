@@ -16,6 +16,10 @@ export class DefaultTextProcessor implements ITextProcessor {
             case 'paragraph':
                 // Add natural breaks for paragraphs
                 return `<speak>${cleanText}<break time="0.3s"/></speak>`;
+            case 'italic':
+                return `<speak><emphasis level="moderate">${cleanText}</emphasis></speak>`;
+            case 'bold':
+                return `<speak><emphasis level="strong">${cleanText}</emphasis></speak>`;
 
             default:
                 return cleanText;
@@ -56,6 +60,10 @@ export class DefaultTextProcessor implements ITextProcessor {
             return 'heading';
         } else if (tagName === 'p') {
             return 'paragraph';
+        } else if (tagName === 'i' || tagName === 'em') {
+            return 'italic';
+        } else if (tagName === 'b' || tagName === 'strong') {
+            return 'bold';
         }
 
         return 'normal';

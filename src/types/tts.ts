@@ -16,7 +16,7 @@ export interface TTSErrorResponse {
     details?: string;
 }
 
-export type ElementType = 'heading' | 'paragraph' | 'normal';
+export type ElementType = 'heading' | 'paragraph' | 'italic' | 'bold' | 'normal';
 
 export interface TtsPlaybackResult {
     audioBuffer: Buffer;

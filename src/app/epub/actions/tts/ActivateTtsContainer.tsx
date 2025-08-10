@@ -22,6 +22,37 @@ import {
 } from "@/lib/services/VoiceManagementService";
 import { ShortcutConfig } from "@/lib/services/KeyboardShortcutService";
 
+// SOLID: Dependency Injection Container
+interface TTSServiceDependencies {
+    adapterFactory: TTSAdapterFactory;
+    textExtractionService: ITextExtractionService;
+    voiceManagementService: IVoiceManagementService;
+    orchestrationService: ITtsOrchestrationService;
+}
+
+const createTTSServices = (): TTSServiceDependencies => {
+    const adapterFactory = new TTSAdapterFactory();
+
+    const config: IAdapterConfig = {
+        apiKey: process.env.ELEVENLABS_API_KEY || '',
+        voiceId: 'JBFqnCBsd6RMkjVDRZzb',
+        modelId: 'eleven_multilingual_v2'
+    };
+
+    const adapter: IContextualPlaybackAdapter = adapterFactory.createAdapter('elevenlabs', config);
+
+    const textExtractionService = new EpubTextExtractionService();
+    const voiceManagementService = new VoiceManagementService();
+    const orchestrationService = new TtsOrchestrationService(adapter, textExtractionService);
+
+    return {
+        adapterFactory,
+        textExtractionService,
+        voiceManagementService,
+        orchestrationService
+    };
+};
+
 export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (props) => {
     const dispatch = useAppDispatch();
 
@@ -36,64 +67,46 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     const [keyboardShortcuts, setKeyboardShortcuts] = useState<ShortcutConfig[]>([]);
 
     // Service references (SOLID: Dependency Inversion)
-    const ttsServiceRef = useRef<ITtsOrchestrationService | null>(null);
-    const voiceServiceRef = useRef<IVoiceManagementService | null>(null);
-    const textExtractionServiceRef = useRef<ITextExtractionService | null>(null);
+    const servicesRef = useRef<TTSServiceDependencies | null>(null);
 
     const isOpen = useAppSelector((state: RootState) => {
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
     });
 
-    // Service initialization with dependency injection (SOLID: DIP)
-    const initializeServices = useCallback((): {
-        ttsService: ITtsOrchestrationService;
-        voiceService: IVoiceManagementService;
-        textExtractionService: ITextExtractionService;
-    } => {
-        if (!ttsServiceRef.current || !voiceServiceRef.current || !textExtractionServiceRef.current) {
-            // Initialize services with dependency injection
-            const factory = new TTSAdapterFactory();
-            const config: IAdapterConfig = {
-                apiKey: process.env.ELEVENLABS_API_KEY || '',
-                voiceId: 'JBFqnCBsd6RMkjVDRZzb',
-                modelId: 'eleven_multilingual_v2'
-            };
+    const getServices = useCallback((): TTSServiceDependencies => {
+        if (!servicesRef.current) {
+            servicesRef.current = createTTSServices();
 
-            const adapter: IContextualPlaybackAdapter = factory.createAdapter('elevenlabs', config);
-            textExtractionServiceRef.current = new EpubTextExtractionService();
-            ttsServiceRef.current = new TtsOrchestrationService(adapter, textExtractionServiceRef.current);
-            voiceServiceRef.current = new VoiceManagementService();
+            setKeyboardShortcuts(servicesRef.current.orchestrationService.getShortcuts());
 
-            // Get registered shortcuts
-            setKeyboardShortcuts(ttsServiceRef.current.getShortcuts());
+            const { orchestrationService } = servicesRef.current;
 
-            // Set up service event listeners (SOLID: Open/Closed)
-            ttsServiceRef.current.on('play', () => {
+            orchestrationService.on('play', () => {
                 setIsPlaying(true);
                 setIsPaused(false);
             });
 
-            ttsServiceRef.current.on('pause', () => {
+            orchestrationService.on('pause', () => {
                 setIsPlaying(false);
                 setIsPaused(true);
             });
 
-            ttsServiceRef.current.on('resume', () => {
+            orchestrationService.on('resume', () => {
                 setIsPlaying(true);
                 setIsPaused(false);
             });
 
-            ttsServiceRef.current.on('stop', () => {
+            orchestrationService.on('stop', () => {
                 setIsPlaying(false);
                 setIsPaused(false);
             });
 
-            ttsServiceRef.current.on('end', () => {
+            orchestrationService.on('end', () => {
                 setIsPlaying(false);
                 setIsPaused(false);
             });
 
-            ttsServiceRef.current.on('error', (info: unknown) => {
+            orchestrationService.on('error', (info: unknown) => {
                 const errorInfo = info as { error?: { message?: string } };
                 setVoicesError(`TTS Error: ${errorInfo.error?.message || 'Unknown error'}`);
                 setIsPlaying(false);
@@ -101,14 +114,9 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             });
         }
 
-        return {
-            ttsService: ttsServiceRef.current!,
-            voiceService: voiceServiceRef.current!,
-            textExtractionService: textExtractionServiceRef.current!
-        };
+        return servicesRef.current;
     }, []);
 
-    // Load voices when component mounts (SOLID: Single Responsibility)
     useEffect(() => {
         loadVoices();
     }, []);
@@ -118,8 +126,8 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         setVoicesError(null);
 
         try {
-            const { voiceService } = initializeServices();
-            const voiceList = await voiceService.loadVoices();
+            const { voiceManagementService } = getServices();
+            const voiceList = await voiceManagementService.loadVoices();
             setVoices(voiceList);
 
             // Set default voice
@@ -144,7 +152,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         setVoicesError(null);
 
         try {
-            const { ttsService, textExtractionService } = initializeServices();
+            const { orchestrationService, textExtractionService } = getServices();
 
             // Extract text using service (SOLID: Single Responsibility)
             const chunks = await textExtractionService.extractTextChunks();
@@ -155,7 +163,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             }
 
             // Use orchestration service for TTS workflow (SOLID: SRP)
-            await ttsService.startReading();
+            await orchestrationService.startReading();
 
         } catch (error) {
             console.error('Error generating TTS:', error);
@@ -166,34 +174,36 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     };
 
     const handleStop = () => {
-        const { ttsService } = initializeServices();
-        ttsService.stopReading();
+        const { orchestrationService } = getServices();
+        orchestrationService.stopReading();
     };
 
     const handlePause = () => {
-        const { ttsService } = initializeServices();
+        const { orchestrationService } = getServices();
         if (isPlaying && !isPaused) {
-            ttsService.pauseReading();
+            orchestrationService.pauseReading();
         }
     };
 
     const handleResume = () => {
-        const { ttsService } = initializeServices();
+        const { orchestrationService } = getServices();
         if (!isPlaying && isPaused) {
-            ttsService.resumeReading();
+            orchestrationService.resumeReading();
         }
     };
 
     const cleanupTts = () => {
         try {
-            const { ttsService } = initializeServices();
-            ttsService.stopReading();
+            if (servicesRef.current) {
+                const { orchestrationService } = servicesRef.current;
+                orchestrationService.stopReading();
+                orchestrationService.destroy?.(); // Clean up if destroy method exists
+            }
         } catch (error) {
             console.error('Error during TTS cleanup:', error);
         }
     };
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             cleanupTts();
@@ -203,7 +213,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     if (!isOpen) return null;
 
     const handleClose = () => {
-        cleanupTts(); // Stop any playing audio using SOLID services
+        cleanupTts();
         dispatch({
             type: "actions/setActionOpen",
             payload: {
@@ -213,7 +223,6 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         });
     };
 
-    // Status message helper (SOLID: Single Responsibility)
     const getStatusMessage = () => {
         if (isGeneratingAudio) return "Generating audio...";
         if (isPlaying) return "Playing with SOLID architecture";
@@ -221,13 +230,12 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         return "Ready";
     };
 
-    // Format shortcut display
     const formatShortcut = (shortcut: ShortcutConfig): string => {
         const modifiers = [];
         if (shortcut.ctrlKey) modifiers.push('Ctrl');
         if (shortcut.altKey) modifiers.push('Alt');
         if (shortcut.shiftKey) modifiers.push('Shift');
-        
+
         const key = shortcut.key === ' ' ? 'Space' : shortcut.key.toUpperCase();
         return `${modifiers.join('+')}${modifiers.length > 0 ? '+' : ''}${key}`;
     };
@@ -253,7 +261,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             }}
         >
             <ThContainerHeader
-                label="Text-to-Speech (SOLID Architecture)"
+                label="Text-to-Speech"
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
             >
                 <ThCloseButton onPress={handleClose}>
@@ -343,13 +351,6 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                             </code>
                         </div>
                     ))}
-                </div>
-
-                <div style={{ marginTop: "15px", fontSize: "12px", color: "#666" }}>
-                    <p>• SOLID Design Principles: Single Responsibility, Open/Closed, Dependency Inversion</p>
-                    <p>• Service-oriented architecture with proper separation of concerns</p>
-                    <p>• Dependency injection for testable and maintainable code</p>
-                    <p>• Keyboard shortcuts enabled globally when TTS is active</p>
                 </div>
             </ThContainerBody>
         </ThPopover>

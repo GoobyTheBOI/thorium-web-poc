@@ -8,14 +8,9 @@ export class TTSAdapterFactory implements IAdapterFactory {
     createAdapter(type: 'elevenlabs' | 'web-speech', config: IAdapterConfig): IContextualPlaybackAdapter {
         switch (type) {
             case 'elevenlabs':
-                // Use mock adapter for browser compatibility
-                // Real ElevenLabs adapter would be used server-side
                 return new ElevenLabsAdapter(config, this.textProcessor);
-
             case 'web-speech':
-                // Future implementation
                 throw new Error('Web Speech API adapter not yet implemented');
-
             default:
                 throw new Error(`Unknown adapter type: ${type}`);
         }
