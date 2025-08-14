@@ -8,14 +8,11 @@ export default async function handler(
     res: NextApiResponse<Buffer | TTSErrorResponse>
 ) {
 
-
     try {
         const {
             text,
             voiceId,
             modelId = 'eleven_multilingual_v2',
-            useContext = false,
-            previousRequestIds
         } = req.body as TTSRequestBody;
 
         if (!process.env.ELEVENLABS_API_KEY) {
@@ -35,7 +32,6 @@ export default async function handler(
             .convert(voiceId, {
                 text: text,
                 modelId,
-                previousRequestIds: useContext ? previousRequestIds : undefined,
             })
             .withRawResponse();
 

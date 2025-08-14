@@ -8,7 +8,6 @@ export interface TTSRequestBody {
     voiceId: string;
     modelId?: string;
     useContext?: boolean;
-    previousRequestIds?: string[];
 }
 
 export interface TTSErrorResponse {

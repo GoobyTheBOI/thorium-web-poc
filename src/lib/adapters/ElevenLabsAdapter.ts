@@ -1,5 +1,4 @@
 import type {
-    IContextualPlaybackAdapter,
     IAdapterConfig,
     ITextProcessor,
     ITTSError,
@@ -11,8 +10,6 @@ interface PlayRequestConfig {
     text: string | TextChunk[];
     voiceId: string;
     modelId: string | undefined;
-    useContext: boolean;
-    previousRequestIds?: string[];
 }
 
 interface PlayResult {
@@ -20,7 +17,7 @@ interface PlayResult {
     audio: HTMLAudioElement;
 }
 
-export class ElevenLabsAdapter implements IPlaybackAdapter, IContextualPlaybackAdapter {
+export class ElevenLabsAdapter implements IPlaybackAdapter {
     private readonly config: IAdapterConfig;
     private readonly textProcessor: ITextProcessor;
     private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
@@ -38,25 +35,6 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, IContextualPlaybackA
         this.textProcessor = textProcessor;
     }
 
-    async playWithContext(textChunk: TextChunk, previousRequestIds?: string[]): Promise<{
-        requestId: string | null;
-    }> {
-        this.validateAndFormatText(textChunk.text);
-
-        const processedText = this.textProcessor.formatText(textChunk.text, textChunk.element || 'normal');
-
-        const requestConfig: PlayRequestConfig = {
-            text: processedText,
-            voiceId: this.config.voiceId,
-            modelId: this.config.modelId,
-            useContext: true,
-            previousRequestIds: previousRequestIds
-        };
-
-        const result = await this.executePlayRequest(requestConfig);
-        return { requestId: result.requestId };
-    }
-
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
         this.validateAndFormatText(textChunk.text);
 
@@ -66,8 +44,6 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, IContextualPlaybackA
             text: processedText,
             voiceId: this.config.voiceId,
             modelId: this.config.modelId,
-            useContext: true,
-            previousRequestIds: undefined
         };
 
         const result = await this.executePlayRequest(requestConfig);
@@ -171,7 +147,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, IContextualPlaybackA
     }
 
     private async makeApiRequest(config: PlayRequestConfig): Promise<Response> {
-        const response = await fetch('/api/tts', {
+        const response = await fetch('/api/tts/elevenlabs', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

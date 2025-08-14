@@ -24,12 +24,6 @@ export interface IPlaybackAdapter extends IAudioPlayback, IPlaybackEvents {
     voices?: IVoiceProvider;
 }
 
-export interface IContextualPlaybackAdapter {
-    playWithContext(textChunk: TextChunk, requestIds?: string[]): Promise<{
-        requestId: string | null;
-    }>;
-}
-
 export interface IAdapterConfig {
     readonly apiKey: string;
     readonly voiceId: string;

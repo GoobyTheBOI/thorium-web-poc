@@ -1,4 +1,4 @@
-import type { IAdapterFactory, IContextualPlaybackAdapter, IAdapterConfig, IPlaybackAdapter } from '@/preferences/types';
+import type { IAdapterFactory, IAdapterConfig, IPlaybackAdapter } from '@/preferences/types';
 import { DefaultTextProcessor } from './TextProcessor';
 import { ElevenLabsAdapter } from './adapters/ElevenLabsAdapter';
 import { AzureAdapter } from './adapters/AzureAdapter';

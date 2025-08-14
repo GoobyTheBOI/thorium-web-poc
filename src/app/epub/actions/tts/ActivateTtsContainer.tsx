@@ -6,7 +6,7 @@ import { IVoices } from "readium-speech";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ThContainerHeader, ThPopover, ThActionButton, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
 import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
-import { IAdapterConfig, IContextualPlaybackAdapter, IPlaybackAdapter } from "@/preferences/types";
+import { IAdapterConfig, IPlaybackAdapter } from "@/preferences/types";
 import { TTSAdapterFactory, AdapterType, AdapterOption } from "@/lib/AdapterFactory";
 import {
     EpubTextExtractionService,

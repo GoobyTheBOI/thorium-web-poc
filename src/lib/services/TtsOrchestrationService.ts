@@ -1,5 +1,5 @@
 import { TTS_CONSTANTS } from '@/types/tts';
-import { IContextualPlaybackAdapter, IPlaybackAdapter } from '@/preferences/types';
+import { IPlaybackAdapter } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 import { IKeyboardShortcutService, KeyboardShortcutService, ShortcutConfig } from './KeyboardShortcutService';
 
