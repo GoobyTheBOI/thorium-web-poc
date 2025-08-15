@@ -3,7 +3,18 @@ import type { ITextProcessor } from '@/preferences/types';
 
 export class DefaultTextProcessor implements ITextProcessor {
     formatText(text: string, elementType: string): string {
-        const cleanText = this.escapeSSML(text);
+        // Handle null/undefined input gracefully
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+
+        // Normalize whitespace and clean text
+        const normalizedText = text
+            .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+            .replace(/[\n\r\t\u00a0]/g, ' ') // Replace special characters with space
+            .trim();
+
+        const cleanText = this.escapeSSML(normalizedText);
         const detectedType = this.detectElementType(elementType);
 
         console.log(`Formatting text: "${cleanText}" as type: ${detectedType}`);
@@ -39,6 +50,9 @@ export class DefaultTextProcessor implements ITextProcessor {
     }
 
     private escapeSSML(text: string): string {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
         return text.replace(/[<>&"']/g, (match) => {
             switch (match) {
                 case '<': return '&lt;';
@@ -52,7 +66,7 @@ export class DefaultTextProcessor implements ITextProcessor {
     }
 
     private detectElementType = (element?: string): ElementType => {
-        if (!element) return 'normal';
+        if (!element || typeof element !== 'string') return 'normal';
 
         const tagName = element.toLowerCase();
 
