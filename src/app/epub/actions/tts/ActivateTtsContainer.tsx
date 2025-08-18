@@ -35,13 +35,7 @@ interface TTSServiceDependencies {
 const createTTSServices = (adapterType: AdapterType = 'elevenlabs'): TTSServiceDependencies => {
     const adapterFactory = new TTSAdapterFactory();
 
-    const config: IAdapterConfig = {
-        apiKey: process.env.ELEVENLABS_API_KEY || '',
-        voiceId: 'JBFqnCBsd6RMkjVDRZzb',
-        modelId: 'eleven_multilingual_v2'
-    };
-
-    const adapter: IPlaybackAdapter = adapterFactory.createAdapter(adapterType, config);
+    const adapter: IPlaybackAdapter = adapterFactory.createAdapter(adapterType);
 
     const textExtractionService = new EpubTextExtractionService();
     const voiceManagementService = new VoiceManagementService();

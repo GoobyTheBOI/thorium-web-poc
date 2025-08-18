@@ -19,11 +19,11 @@ export const ActivateTtsTrigger = () => {
     return (
         <ThActionButton
             key={`${TtsActionKeys.activateTts}`}
-            label="Console Log Action"
+            label="Activate TTS"
             onPress={handlePress}
-            style={{ color: "blue" }}
+            style={{ color: "white" }}
         >
-            <span>Log to Console</span>
+            <span>Text to speech</span>
         </ThActionButton>
     );
 };

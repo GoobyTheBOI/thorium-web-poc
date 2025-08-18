@@ -48,12 +48,12 @@ export class TTSAdapterFactory implements IAdapterFactory {
         return TTSAdapterFactory.AVAILABLE_ADAPTERS.filter(adapter => adapter.isImplemented);
     }
 
-    createAdapter(type: AdapterType, config: IAdapterConfig): IPlaybackAdapter {
+    createAdapter(type: AdapterType): IPlaybackAdapter {
         switch (type) {
             case 'elevenlabs':
-                return new ElevenLabsAdapter(config, this.textProcessor);
+                return new ElevenLabsAdapter(this.textProcessor);
             case 'azure':
-                return new AzureAdapter(config, this.textProcessor);
+                return new AzureAdapter(this.textProcessor);
             case 'web-speech':
                 throw new Error('Web Speech API adapter not yet implemented');
             default:

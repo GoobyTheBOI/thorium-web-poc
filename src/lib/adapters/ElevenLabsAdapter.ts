@@ -18,7 +18,11 @@ interface PlayResult {
 }
 
 export class ElevenLabsAdapter implements IPlaybackAdapter {
-    private readonly config: IAdapterConfig;
+    private readonly config: IAdapterConfig = {
+        apiKey: process.env.ELEVENLABS_API_KEY || '',
+        voiceId: 'JBFqnCBsd6RMkjVDRZzb',
+        modelId: 'eleven_multilingual_v2'
+    };
     private readonly textProcessor: ITextProcessor;
     private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
 
@@ -28,10 +32,8 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
     private isPaused: boolean = false;
 
     constructor(
-        config: IAdapterConfig,
         textProcessor: ITextProcessor,
     ) {
-        this.config = config;
         this.textProcessor = textProcessor;
     }
 

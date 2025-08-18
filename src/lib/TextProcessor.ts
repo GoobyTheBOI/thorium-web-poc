@@ -22,15 +22,15 @@ export class DefaultTextProcessor implements ITextProcessor {
         switch (detectedType) {
             case 'heading':
                 // Add pauses and emphasis for headings using SSML
-                return `<speak><break time="0.5s"/><emphasis level="strong"><prosody rate="slow">${cleanText}</prosody></emphasis><break time="1s"/>Hallo, dit is een test</speak>`;
+                return `<break time="0.5s"/><emphasis level="strong"><prosody rate="slow">${cleanText}</prosody></emphasis><break time="1s"/>`;
 
             case 'paragraph':
                 // Add natural breaks for paragraphs
-                return `<speak>${cleanText}<break time="0.3s"/></speak>`;
+                return `${cleanText}<break time="0.3s"/>`;
             case 'italic':
-                return `<speak><emphasis level="moderate">${cleanText}</emphasis></speak>`;
+                return `<emphasis level="moderate">${cleanText}</emphasis>`;
             case 'bold':
-                return `<speak><emphasis level="strong">${cleanText}</emphasis></speak>`;
+                return `<emphasis level="strong">${cleanText}`;
 
             default:
                 return cleanText;
