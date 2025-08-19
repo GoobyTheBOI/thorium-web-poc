@@ -3,183 +3,121 @@ import { IPlaybackAdapter } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 import { IKeyboardShortcutService, KeyboardShortcutService, ShortcutConfig } from './KeyboardShortcutService';
 import { TTSAdapterFactory, AdapterType } from '../AdapterFactory';
-import { 
-    ITtsEventEmitter, 
-    TtsEventEmitter, 
-    ITtsEventHandler, 
-    TtsEvent,
-    TtsPlayEvent,
-    TtsPauseEvent,
-    TtsResumeEvent,
-    TtsStopEvent,
-    TtsErrorEvent,
-    TtsAdapterSwitchedEvent
-} from './TtsEventSystem';
-import { 
-    ITtsCommand,
-    TtsCommandInvoker,
-    StartReadingCommand,
-    PauseReadingCommand,
-    ResumeReadingCommand,
-    StopReadingCommand
-} from './TtsCommands';
-import { 
-    ITtsStateManager, 
-    TtsStateManager, 
-    ITtsState 
-} from './TtsStateManager';
 
-/**
- * Main interface for TTS orchestration with clearly defined responsibilities
- * Follows Interface Segregation Principle
- */
 export interface ITtsOrchestrationService {
-    // Playback control
     startReading(): Promise<void>;
-    pauseReading(): Promise<void>;
-    resumeReading(): Promise<void>;
-    stopReading(): Promise<void>;
-    
-    // State queries
-    getCurrentState(): ITtsState;
+    pauseReading(): void;
+    resumeReading(): void;
+    stopReading(): void;
     isPlaying(): boolean;
     isPaused(): boolean;
-    
-    // Event system
-    onEvent<T extends TtsEvent>(eventType: T['type'], handler: ITtsEventHandler<T>): void;
-    offEvent<T extends TtsEvent>(eventType: T['type'], handler: ITtsEventHandler<T>): void;
-    
-    // Keyboard shortcuts
+    on(event: string, callback: (info: unknown) => void): void;
     enableKeyboardShortcuts(): void;
     disableKeyboardShortcuts(): void;
     getShortcuts(): ShortcutConfig[];
-    
-    // Adapter management
-    switchAdapter(adapterType?: AdapterType): Promise<void>;
+    switchAdapter(adapterType?: AdapterType): void;
     getCurrentAdapterType(): AdapterType | null;
-    
-    // Lifecycle
     destroy(): void;
 }
 
-/**
- * Refactored TTS Orchestration Service following SOLID principles
- * - Single Responsibility: Coordinates between different TTS subsystems
- * - Open/Closed: Extensible through dependency injection
- * - Liskov Substitution: Uses interfaces for all dependencies
- * - Interface Segregation: Clear, focused interfaces
- * - Dependency Inversion: Depends on abstractions, not concretions
- */
 export class TtsOrchestrationService implements ITtsOrchestrationService {
-    private readonly eventEmitter: ITtsEventEmitter;
-    private readonly commandInvoker: TtsCommandInvoker;
-    private readonly stateManager: ITtsStateManager;
-    private readonly keyboardService: IKeyboardShortcutService;
-    private readonly adapterFactory: TTSAdapterFactory;
-    
+    private eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
+    private keyboardService: IKeyboardShortcutService;
+    private isExecuting: boolean = false; // Prevent concurrent operations
+    private adapterFactory: TTSAdapterFactory;
     private currentAdapterType: AdapterType | null = null;
-    private adapterEventCleanup: (() => void) | null = null;
+    private adapterEventHandlers: Map<string, (info: unknown) => void> = new Map();
 
     constructor(
         private adapter: IPlaybackAdapter,
-        private readonly textExtractor: ITextExtractionService,
+        private textExtractor: ITextExtractionService,
         initialAdapterType?: AdapterType
     ) {
-        // Initialize subsystems
-        this.eventEmitter = new TtsEventEmitter();
-        this.commandInvoker = new TtsCommandInvoker();
-        this.stateManager = new TtsStateManager();
+        this.setupAdapterEvents();
         this.keyboardService = new KeyboardShortcutService();
         this.adapterFactory = new TTSAdapterFactory();
-        
-        // Set initial adapter type
         this.currentAdapterType = initialAdapterType || null;
-        
-        // Setup integrations
-        this.setupAdapterEvents();
-        this.setupStateManagement();
         this.setupKeyboardShortcuts();
-        
-        console.log(`TTS Orchestration Service initialized with ${initialAdapterType || 'default'} adapter`);
     }
 
-    // Playback control methods using Command pattern
     async startReading(): Promise<void> {
-        if (!this.stateManager.canStart()) {
-            console.log('TTS: Cannot start reading in current state:', this.stateManager.getCurrentState().name);
+        // Prevent concurrent execution
+        if (this.isExecuting) {
+            console.log('TTS: Start reading already in progress, ignoring duplicate request');
             return;
         }
+
+        // Don't start if already playing
+        if (this.isPlaying()) {
+            console.log('TTS: Already playing, ignoring start request');
+            return;
+        }
+
+        this.isExecuting = true;
 
         try {
             const chunks = await this.textExtractor.extractTextChunks();
-            const limitedChunks = chunks.slice(0, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING);
-            
-            console.log(`Starting TTS with ${limitedChunks.length} chunks`);
-            
-            const command = new StartReadingCommand(this.adapter, this.eventEmitter, limitedChunks);
-            await this.commandInvoker.execute(command);
-            
-            this.stateManager.transitionToStarted();
+            const chunksToSend = chunks.slice(0, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING);
+
+            console.log(`Starting TTS with ${chunksToSend.length} chunks`);
+
+            // Process chunks sequentially for context continuity
+            for (let i = 0; i < chunksToSend.length; i++) {
+                const textChunk = chunksToSend[i];
+
+                console.log(`Processing chunk ${i + 1}/${chunksToSend.length}:`, {
+                    element: textChunk.element,
+                    text: textChunk.text
+                });
+
+                await this.adapter.play(textChunk);
+            }
+
+            this.emitEvent('reading-started', { chunks: chunksToSend });
         } catch (error) {
-            this.stateManager.transitionToError();
-            const errorEvent: TtsErrorEvent = {
-                type: 'error',
-                timestamp: new Date(),
-                source: 'TtsOrchestrationService.startReading',
-                error: error instanceof Error ? error : new Error(String(error))
-            };
-            this.eventEmitter.emit(errorEvent);
+            console.error('TTS Orchestration: Failed to start reading', error);
+            this.emitEvent('error', { error });
             throw error;
+        } finally {
+            this.isExecuting = false;
         }
     }
 
-    async pauseReading(): Promise<void> {
-        if (!this.stateManager.canPause()) {
-            console.log('TTS: Cannot pause in current state:', this.stateManager.getCurrentState().name);
+    pauseReading(): void {
+        if (!this.isPlaying()) {
+            console.log('TTS: Not playing, ignoring pause request');
             return;
         }
 
-        try {
-            const command = new PauseReadingCommand(this.adapter, this.eventEmitter);
-            await this.commandInvoker.execute(command);
-            this.stateManager.transitionToPaused();
-        } catch (error) {
-            this.stateManager.transitionToError();
-            throw error;
+        if (this.isPaused()) {
+            console.log('TTS: Already paused, ignoring pause request');
+            return;
         }
+
+        this.adapter.pause();
+        console.log('TTS: Paused via orchestration service');
     }
 
-    async resumeReading(): Promise<void> {
-        if (!this.stateManager.canResume()) {
-            console.log('TTS: Cannot resume in current state:', this.stateManager.getCurrentState().name);
+    resumeReading(): void {
+        if (!this.isPaused()) {
+            console.log('TTS: Not paused, ignoring resume request');
             return;
         }
 
-        try {
-            const command = new ResumeReadingCommand(this.adapter, this.eventEmitter);
-            await this.commandInvoker.execute(command);
-            this.stateManager.transitionToResumed();
-        } catch (error) {
-            this.stateManager.transitionToError();
-            throw error;
-        }
+        this.adapter.resume();
+        console.log('TTS: Resumed via orchestration service');
     }
 
-    async stopReading(): Promise<void> {
-        if (!this.stateManager.canStop()) {
-            console.log('TTS: Cannot stop in current state:', this.stateManager.getCurrentState().name);
+    stopReading(): void {
+        if (!this.isPlaying() && !this.isPaused()) {
+            console.log('TTS: Not playing or paused, ignoring stop request');
             return;
         }
 
-        try {
-            const command = new StopReadingCommand(this.adapter, this.eventEmitter);
-            await this.commandInvoker.execute(command);
-            this.stateManager.transitionToStopped();
-        } catch (error) {
-            console.error('Error stopping TTS:', error);
-            // Force stop even on error
-            this.stateManager.transitionToStopped();
-        }
+        this.adapter.stop();
+        this.isExecuting = false; // Reset execution flag
+        this.emitEvent('reading-stopped', {});
+        console.log('TTS: Stopped via orchestration service');
     }
 
     isPlaying(): boolean {
@@ -420,14 +358,12 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
         const stopHandler = (info: unknown) => {
             console.log('TTS Orchestration: Stopped', info);
-            this.requestIds = [];
             this.isExecuting = false; // Reset execution flag
             this.emitEvent('stop', info);
         };
 
         const endHandler = (info: unknown) => {
             console.log('TTS Orchestration: Ended', info);
-            this.requestIds = [];
             this.isExecuting = false; // Reset execution flag
             this.emitEvent('end', info);
         };
