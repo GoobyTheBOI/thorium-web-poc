@@ -5,6 +5,7 @@ export interface IAudioPlayback {
     pause(): void;
     resume(): void;
     stop(): void;
+    destroy(): void;
     getIsPlaying?(): boolean;
     getIsPaused?(): boolean;
     getCurrentAudio?(): HTMLAudioElement | null;

@@ -39,7 +39,7 @@ const createTTSServices = (adapterType: AdapterType = 'elevenlabs'): TTSServiceD
 
     const textExtractionService = new EpubTextExtractionService();
     const voiceManagementService = new VoiceManagementService();
-    const orchestrationService = new TtsOrchestrationService(adapter, textExtractionService);
+    const orchestrationService = new TtsOrchestrationService(adapter, textExtractionService, adapterType);
 
     return {
         adapterFactory,
@@ -82,7 +82,14 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             // Cleanup existing services if they exist
             if (servicesRef.current) {
                 servicesRef.current.orchestrationService.stopReading();
-                // Try to destroy if method exists (duck typing)
+                
+                // Destroy the orchestration service to clean up keyboard shortcuts
+                if ('destroy' in servicesRef.current.orchestrationService &&
+                    typeof servicesRef.current.orchestrationService.destroy === 'function') {
+                    servicesRef.current.orchestrationService.destroy();
+                }
+                
+                // Try to destroy adapter if method exists (duck typing)
                 if ('destroy' in servicesRef.current.currentAdapter &&
                     typeof servicesRef.current.currentAdapter.destroy === 'function') {
                     servicesRef.current.currentAdapter.destroy();
@@ -126,6 +133,16 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 setIsPlaying(false);
                 setIsPaused(false);
             });
+
+            orchestrationService.on('adapter-switched', (info: unknown) => {
+                const switchInfo = info as { newAdapter?: AdapterType };
+                if (switchInfo.newAdapter) {
+                    console.log(`Adapter switched to: ${switchInfo.newAdapter}`);
+                    setSelectedAdapterType(switchInfo.newAdapter);
+                    // Optionally reload voices for the new adapter
+                    loadVoices(switchInfo.newAdapter).catch(console.error);
+                }
+            });
         }
 
         return servicesRef.current;
@@ -146,24 +163,45 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         setVoicesError(null);
 
         try {
-            // Stop current playback
-            if (servicesRef.current) {
-                servicesRef.current.orchestrationService.stopReading();
+            // Use orchestration service's switchAdapter method if available
+            if (servicesRef.current?.orchestrationService.switchAdapter) {
+                servicesRef.current.orchestrationService.switchAdapter(newAdapterType);
+                setSelectedAdapterType(newAdapterType);
+
+                // Reset states
+                setIsPlaying(false);
+                setIsPaused(false);
+                setSelectedVoice(null);
+
+                // Load voices for new adapter
+                await loadVoices(newAdapterType);
+            } else {
+                // Fallback to old method for backward compatibility
+                // Stop current playback and clean up
+                if (servicesRef.current) {
+                    servicesRef.current.orchestrationService.stopReading();
+                    
+                    // Destroy the orchestration service to clean up keyboard shortcuts
+                    if ('destroy' in servicesRef.current.orchestrationService &&
+                        typeof servicesRef.current.orchestrationService.destroy === 'function') {
+                        servicesRef.current.orchestrationService.destroy();
+                    }
+                }
+
+                // Update adapter type (this will trigger service recreation in getServices)
+                setSelectedAdapterType(newAdapterType);
+
+                // Clear services ref to force recreation
+                servicesRef.current = null;
+
+                // Reset states
+                setIsPlaying(false);
+                setIsPaused(false);
+                setSelectedVoice(null);
+
+                // Load voices for new adapter
+                await loadVoices();
             }
-
-            // Update adapter type (this will trigger service recreation in getServices)
-            setSelectedAdapterType(newAdapterType);
-
-            // Clear services ref to force recreation
-            servicesRef.current = null;
-
-            // Reset states
-            setIsPlaying(false);
-            setIsPaused(false);
-            setSelectedVoice(null);
-
-            // Load voices for new adapter
-            await loadVoices();
 
         } catch (error) {
             console.error('Error changing adapter:', error);
