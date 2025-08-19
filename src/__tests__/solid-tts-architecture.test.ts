@@ -1,22 +1,11 @@
 import { TTSAdapterFactory, AdapterType } from '../lib/AdapterFactory';
-import { TtsOrchestr    test('VoiceManagementService only handles voice operations', () => {
-      const voiceService = new VoiceManagementService();
-
-      // Should only have voice-related methods
-      expect(typeof voiceService.getSelectedVoice).toBe('function');
-      expect(typeof voiceService.selectVoice).toBe('function');
-      expect(typeof voiceService.loadVoices).toBe('function');
-
-      // Should not have TTS implementation methods
-      expect(voiceService.hasOwnProperty('generateSpeech')).toBe(false);
-      expect(voiceService.hasOwnProperty('playAudio')).toBe(false);
-      expect(voiceService.hasOwnProperty('pause')).toBe(false);
-    }); from '../lib/services/TtsOrchestrationService';
+import { TtsOrchestrationService } from '../lib/services/TtsOrchestrationService';
 import { ElevenLabsAdapter } from '../lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../lib/adapters/AzureAdapter';
-import { KeyboardShortcutService } from '../lib/services/KeyboardShortcutService';
 import { VoiceManagementService } from '../lib/services/VoiceManagementService';
 import { EpubTextExtractionService } from '../lib/services/TextExtractionService';
+import { KeyboardHandler } from '../lib/handlers/KeyboardHandler';
+import { TtsStateManager } from '../lib/managers/TtsStateManager';
 
 // Mock the external dependencies
 jest.mock('@elevenlabs/elevenlabs-js', () => ({

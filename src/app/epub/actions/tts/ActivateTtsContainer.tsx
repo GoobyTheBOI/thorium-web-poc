@@ -6,48 +6,70 @@ import { IVoices } from "readium-speech";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ThContainerHeader, ThPopover, ThActionButton, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
 import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
-import { IAdapterConfig, IPlaybackAdapter } from "@/preferences/types";
+import { IPlaybackAdapter } from "@/preferences/types";
 import { TTSAdapterFactory, AdapterType, AdapterOption } from "@/lib/AdapterFactory";
 import {
-    EpubTextExtractionService,
-    ITextExtractionService
+    EpubTextExtractionService
 } from "@/lib/services/TextExtractionService";
 import {
     TtsOrchestrationService,
-    ITtsOrchestrationService
+    TtsCallbacks
 } from "@/lib/services/TtsOrchestrationService";
 import {
-    VoiceManagementService,
-    IVoiceManagementService
+    VoiceManagementService
 } from "@/lib/services/VoiceManagementService";
-import { ShortcutConfig } from "@/lib/services/KeyboardShortcutService";
+import { KeyboardShortcut } from "@/lib/handlers/KeyboardHandler";
+import { TtsKeyboardHandler } from "@/lib/handlers/TtsKeyboardHandler";
+import { TtsState } from "@/lib/managers/TtsStateManager";
+import styles from "./ActivateTtsContainer.module.css";
 
 // SOLID: Dependency Injection Container
 interface TTSServiceDependencies {
     adapterFactory: TTSAdapterFactory;
-    textExtractionService: ITextExtractionService;
-    voiceManagementService: IVoiceManagementService;
-    orchestrationService: ITtsOrchestrationService;
+    textExtractionService: EpubTextExtractionService;
+    voiceManagementService: VoiceManagementService;
+    orchestrationService: TtsOrchestrationService;
+    keyboardHandler: TtsKeyboardHandler;
     currentAdapter: IPlaybackAdapter;
-    currentAdapterType: AdapterType;
 }
 
-const createTTSServices = (adapterType: AdapterType = 'elevenlabs'): TTSServiceDependencies => {
+const createTTSServices = (
+    adapterType: AdapterType = 'elevenlabs',
+    onStateChange?: (state: TtsState) => void,
+    onAdapterSwitch?: (newAdapter: AdapterType) => void
+): TTSServiceDependencies => {
     const adapterFactory = new TTSAdapterFactory();
-
     const adapter: IPlaybackAdapter = adapterFactory.createAdapter(adapterType);
-
     const textExtractionService = new EpubTextExtractionService();
     const voiceManagementService = new VoiceManagementService();
-    const orchestrationService = new TtsOrchestrationService(adapter, textExtractionService, adapterType);
+
+    const callbacks: TtsCallbacks = {
+        onStateChange: onStateChange,
+        onError: (error: string) => {
+            console.error('TTS Error:', error);
+        },
+        onAdapterSwitch: (newAdapter: AdapterType) => {
+            console.log('Adapter switched to:', newAdapter);
+            onAdapterSwitch?.(newAdapter);
+        }
+    };
+
+    const orchestrationService = new TtsOrchestrationService(
+        adapter,
+        textExtractionService,
+        adapterType,
+        callbacks
+    );
+
+    const keyboardHandler = new TtsKeyboardHandler(orchestrationService);
 
     return {
         adapterFactory,
         textExtractionService,
         voiceManagementService,
         orchestrationService,
-        currentAdapter: adapter,
-        currentAdapterType: adapterType
+        keyboardHandler,
+        currentAdapter: adapter
     };
 };
 
@@ -59,18 +81,25 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     const [isLoadingVoices, setIsLoadingVoices] = useState(true);
     const [voicesError, setVoicesError] = useState<string | null>(null);
     const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
-    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isPaused, setIsPaused] = useState(false);
-    const [keyboardShortcuts, setKeyboardShortcuts] = useState<ShortcutConfig[]>([]);
+    const [keyboardShortcuts, setKeyboardShortcuts] = useState<KeyboardShortcut[]>([]);
 
     // Adapter selection state (SOLID: Single Responsibility)
     const [selectedAdapterType, setSelectedAdapterType] = useState<AdapterType>('elevenlabs');
     const [availableAdapters] = useState<AdapterOption[]>(TTSAdapterFactory.getAvailableAdapters());
     const [isRecreatingingServices, setIsRecreatingServices] = useState(false);
 
+    // TTS State from the state manager
+    const [ttsState, setTtsState] = useState<TtsState>({
+        isPlaying: false,
+        isPaused: false,
+        isGenerating: false,
+        error: null,
+        currentAdapter: null
+    });
+
     // Service references (SOLID: Dependency Inversion)
     const servicesRef = useRef<TTSServiceDependencies | null>(null);
+    const loadVoicesRef = useRef<((adapterType?: AdapterType) => Promise<void>) | null>(null);
 
     const isOpen = useAppSelector((state: RootState) => {
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
@@ -78,144 +107,46 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
 
     // SOLID: Service creation with adapter selection
     const getServices = useCallback((adapterType: AdapterType = selectedAdapterType): TTSServiceDependencies => {
-        if (!servicesRef.current || servicesRef.current.currentAdapterType !== adapterType) {
-            // Cleanup existing services if they exist
-            if (servicesRef.current) {
-                servicesRef.current.orchestrationService.stopReading();
-                
-                // Destroy the orchestration service to clean up keyboard shortcuts
-                if ('destroy' in servicesRef.current.orchestrationService &&
-                    typeof servicesRef.current.orchestrationService.destroy === 'function') {
-                    servicesRef.current.orchestrationService.destroy();
+        // If services exist for a different adapter type, clean them up first
+        const currentAdapterType = servicesRef.current?.orchestrationService.getCurrentAdapterType();
+        if (servicesRef.current && currentAdapterType && currentAdapterType !== adapterType) {
+            console.log('Cleaning up existing services before creating new ones');
+            servicesRef.current.orchestrationService.destroy();
+            servicesRef.current.keyboardHandler.cleanup();
+            servicesRef.current = null;
+        }
+
+        if (!servicesRef.current) {
+            console.log('Creating new TTS services for adapter:', adapterType);
+
+            const handleStateChange = (state: TtsState) => {
+                setTtsState(state);
+                if (state.error) {
+                    setVoicesError(state.error);
                 }
-                
-                // Try to destroy adapter if method exists (duck typing)
-                if ('destroy' in servicesRef.current.currentAdapter &&
-                    typeof servicesRef.current.currentAdapter.destroy === 'function') {
-                    servicesRef.current.currentAdapter.destroy();
+            };
+
+            const handleAdapterSwitch = (newAdapter: AdapterType) => {
+                setSelectedAdapterType(newAdapter);
+                // Reload voices for the new adapter using the ref
+                if (loadVoicesRef.current) {
+                    loadVoicesRef.current(newAdapter);
                 }
-            }
+            };
 
-            servicesRef.current = createTTSServices(adapterType);
+            servicesRef.current = createTTSServices(adapterType, handleStateChange, handleAdapterSwitch);
 
-            setKeyboardShortcuts(servicesRef.current.orchestrationService.getShortcuts());
+            // Get initial state
+            const initialState = servicesRef.current.orchestrationService.getState();
+            setTtsState(initialState);
 
-            const { orchestrationService } = servicesRef.current;
-
-            orchestrationService.on('play', () => {
-                setIsPlaying(true);
-                setIsPaused(false);
-            });
-
-            orchestrationService.on('pause', () => {
-                setIsPlaying(false);
-                setIsPaused(true);
-            });
-
-            orchestrationService.on('resume', () => {
-                setIsPlaying(true);
-                setIsPaused(false);
-            });
-
-            orchestrationService.on('stop', () => {
-                setIsPlaying(false);
-                setIsPaused(false);
-            });
-
-            orchestrationService.on('end', () => {
-                setIsPlaying(false);
-                setIsPaused(false);
-            });
-
-            orchestrationService.on('error', (info: unknown) => {
-                const errorInfo = info as { error?: { message?: string } };
-                setVoicesError(`TTS Error: ${errorInfo.error?.message || 'Unknown error'}`);
-                setIsPlaying(false);
-                setIsPaused(false);
-            });
-
-            orchestrationService.on('adapter-switched', (info: unknown) => {
-                const switchInfo = info as { newAdapter?: AdapterType };
-                if (switchInfo.newAdapter) {
-                    console.log(`Adapter switched to: ${switchInfo.newAdapter}`);
-                    setSelectedAdapterType(switchInfo.newAdapter);
-                    // Optionally reload voices for the new adapter
-                    loadVoices(switchInfo.newAdapter).catch(console.error);
-                }
-            });
+            setKeyboardShortcuts(servicesRef.current.keyboardHandler.getShortcuts());
         }
 
         return servicesRef.current;
-    }, [selectedAdapterType]);
+    }, []); // Remove selectedAdapterType dependency to make this function stable
 
-    // SOLID: Adapter type change handler (Single Responsibility)
-    const handleAdapterChange = useCallback(async (newAdapterType: AdapterType) => {
-        if (newAdapterType === selectedAdapterType) return;
-
-        // Check if new adapter is implemented
-        const adapter = availableAdapters.find(a => a.key === newAdapterType);
-        if (!adapter?.isImplemented) {
-            setVoicesError(`${adapter?.name || 'This adapter'} is not yet implemented`);
-            return;
-        }
-
-        setIsRecreatingServices(true);
-        setVoicesError(null);
-
-        try {
-            // Use orchestration service's switchAdapter method if available
-            if (servicesRef.current?.orchestrationService.switchAdapter) {
-                servicesRef.current.orchestrationService.switchAdapter(newAdapterType);
-                setSelectedAdapterType(newAdapterType);
-
-                // Reset states
-                setIsPlaying(false);
-                setIsPaused(false);
-                setSelectedVoice(null);
-
-                // Load voices for new adapter
-                await loadVoices(newAdapterType);
-            } else {
-                // Fallback to old method for backward compatibility
-                // Stop current playback and clean up
-                if (servicesRef.current) {
-                    servicesRef.current.orchestrationService.stopReading();
-                    
-                    // Destroy the orchestration service to clean up keyboard shortcuts
-                    if ('destroy' in servicesRef.current.orchestrationService &&
-                        typeof servicesRef.current.orchestrationService.destroy === 'function') {
-                        servicesRef.current.orchestrationService.destroy();
-                    }
-                }
-
-                // Update adapter type (this will trigger service recreation in getServices)
-                setSelectedAdapterType(newAdapterType);
-
-                // Clear services ref to force recreation
-                servicesRef.current = null;
-
-                // Reset states
-                setIsPlaying(false);
-                setIsPaused(false);
-                setSelectedVoice(null);
-
-                // Load voices for new adapter
-                await loadVoices();
-            }
-
-        } catch (error) {
-            console.error('Error changing adapter:', error);
-            setVoicesError(`Failed to switch to ${adapter?.name || 'new adapter'}`);
-        } finally {
-            setIsRecreatingServices(false);
-        }
-    }, [selectedAdapterType, availableAdapters]);
-
-    useEffect(() => {
-        loadVoices();
-    }, []);
-
-    const loadVoices = async (adapterType?: AdapterType) => {
+    const loadVoices = useCallback(async (adapterType?: AdapterType) => {
         setIsLoadingVoices(true);
         setVoicesError(null);
 
@@ -234,7 +165,69 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         } finally {
             setIsLoadingVoices(false);
         }
-    };
+    }, [getServices]);
+
+    // Set the ref so the callback can use it
+    loadVoicesRef.current = loadVoices;
+
+    // SOLID: Adapter type change handler (Single Responsibility)
+    const handleAdapterChange = useCallback(async (newAdapterType: AdapterType) => {
+        if (newAdapterType === selectedAdapterType) return;
+
+        // Check if new adapter is implemented
+        const adapter = availableAdapters.find(a => a.key === newAdapterType);
+        if (!adapter?.isImplemented) {
+            setVoicesError(`${adapter?.name || 'This adapter'} is not yet implemented`);
+            return;
+        }
+
+        setIsRecreatingServices(true);
+        setVoicesError(null);
+
+        try {
+            // Clean up existing services
+            if (servicesRef.current) {
+                servicesRef.current.orchestrationService.destroy();
+                servicesRef.current.keyboardHandler.cleanup();
+            }
+
+            // Clear services ref to force recreation
+            servicesRef.current = null;
+
+            // Update adapter type (this will trigger service recreation in getServices)
+            setSelectedAdapterType(newAdapterType);
+
+            // Reset states
+            setSelectedVoice(null);
+
+            // Load voices for new adapter
+            await loadVoices();
+
+        } catch (error) {
+            console.error('Error changing adapter:', error);
+            setVoicesError(`Failed to switch to ${adapter?.name || 'new adapter'}`);
+        } finally {
+            setIsRecreatingServices(false);
+        }
+    }, [selectedAdapterType, availableAdapters, loadVoices]);
+
+    useEffect(() => {
+        loadVoices();
+    }, [loadVoices]);
+
+    // Cleanup on component unmount (SOLID: Single Responsibility for cleanup)
+    useEffect(() => {
+        return () => {
+            if (servicesRef.current) {
+                console.log('Cleaning up TTS services on component unmount');
+                servicesRef.current.orchestrationService.destroy();
+                servicesRef.current.keyboardHandler.cleanup();
+                servicesRef.current = null;
+            }
+        };
+    }, []);
+
+
 
     const handleGenerateTts = async () => {
         if (!selectedVoice) {
@@ -242,7 +235,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             return;
         }
 
-        setIsGeneratingAudio(true);
+        setTtsState(prev => ({ ...prev, isGenerating: true }));
         setVoicesError(null);
 
         try {
@@ -262,7 +255,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             console.error('Error generating TTS:', error);
             setVoicesError('Failed to generate audio');
         } finally {
-            setIsGeneratingAudio(false);
+            setTtsState(prev => ({ ...prev, isGenerating: false }));
         }
     };
 
@@ -273,14 +266,14 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
 
     const handlePause = () => {
         const { orchestrationService } = getServices();
-        if (isPlaying && !isPaused) {
+        if (ttsState.isPlaying && !ttsState.isPaused) {
             orchestrationService.pauseReading();
         }
     };
 
     const handleResume = () => {
         const { orchestrationService } = getServices();
-        if (!isPlaying && isPaused) {
+        if (!ttsState.isPlaying && ttsState.isPaused) {
             orchestrationService.resumeReading();
         }
     };
@@ -317,13 +310,13 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     };
 
     const getStatusMessage = () => {
-        if (isGeneratingAudio) return "Generating audio...";
-        if (isPlaying) return "Playing with SOLID architecture";
-        if (isPaused) return "Paused";
+        if (ttsState.isGenerating) return "Generating audio...";
+        if (ttsState.isPlaying) return "Playing with SOLID architecture";
+        if (ttsState.isPaused) return "Paused";
         return "Ready";
     };
 
-    const formatShortcut = (shortcut: ShortcutConfig): string => {
+    const formatShortcut = (shortcut: KeyboardShortcut): string => {
         const modifiers = [];
         if (shortcut.ctrlKey) modifiers.push('Ctrl');
         if (shortcut.altKey) modifiers.push('Alt');
@@ -339,19 +332,11 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             isOpen={isOpen}
             onOpenChange={handleClose}
             key={`${TtsActionKeys.activateTts}`}
-            style={{
-                width: "400px",
-                maxHeight: "80vh",
-                overflowY: "auto",
-                backgroundColor: "#fff",
-                borderRadius: "8px",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                padding: "20px",
-            }}
+            className={styles.popover}
         >
             <ThContainerHeader
                 label={`Text-to-Speech - ${availableAdapters.find(a => a.key === selectedAdapterType)?.name || 'Unknown'}`}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                className={styles.header}
             >
                 <ThCloseButton onPress={handleClose}>
                     Close
@@ -360,35 +345,29 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
 
             <ThContainerBody>
                 {voicesError && (
-                    <div style={{ marginBottom: "15px", padding: "10px", backgroundColor: "#ffebee", borderRadius: "4px" }}>
-                        <p style={{ color: "#c62828", fontSize: "12px" }}>
+                    <div className={styles.errorContainer}>
+                        <p className={styles.errorText}>
                             Error: {voicesError}
                         </p>
                     </div>
                 )}
 
-                <div style={{ marginBottom: "20px" }}>
-                    <p style={{ fontSize: "14px", marginBottom: "10px" }}>
+                <div className={styles.statusContainer}>
+                    <p className={styles.statusText}>
                         Status: {getStatusMessage()}
                     </p>
                 </div>
 
                 {/* TTS Provider Selection (SOLID: Open/Closed Principle) */}
-                <div className="adapter-selection" style={{ marginBottom: "15px" }}>
-                    <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "bold" }}>
+                <div className={styles.adapterSelection}>
+                    <label className={styles.label}>
                         TTS Provider:
                     </label>
                     <select
                         value={selectedAdapterType}
                         onChange={(e) => handleAdapterChange(e.target.value as AdapterType)}
-                        disabled={isGeneratingAudio || isPlaying || isRecreatingingServices}
-                        style={{
-                            width: "100%",
-                            padding: "8px",
-                            borderRadius: "4px",
-                            border: "1px solid #ddd",
-                            backgroundColor: isRecreatingingServices ? "#f5f5f5" : "#fff"
-                        }}
+                        disabled={ttsState.isGenerating || ttsState.isPlaying || isRecreatingingServices}
+                        className={styles.select}
                     >
                         {availableAdapters.map((adapter) => (
                             <option
@@ -405,12 +384,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     {(() => {
                         const currentAdapter = availableAdapters.find(a => a.key === selectedAdapterType);
                         return currentAdapter && (
-                            <p style={{
-                                fontSize: "12px",
-                                color: "#666",
-                                marginTop: "5px",
-                                fontStyle: "italic"
-                            }}>
+                            <p className={styles.adapterDescription}>
                                 {currentAdapter.description}
                                 {currentAdapter.requiresApiKey && " (Requires API Key)"}
                             </p>
@@ -418,30 +392,25 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     })()}
 
                     {isRecreatingingServices && (
-                        <p style={{ fontSize: "12px", color: "#1976d2", marginTop: "5px" }}>
+                        <p className={styles.switchingMessage}>
                             🔄 Switching TTS provider...
                         </p>
                     )}
                 </div>
 
                 {/* Voice Selection */}
-                <div className="voice-selection" style={{ marginBottom: "15px" }}>
-                    <label style={{ display: "block", marginBottom: "5px", fontSize: "14px" }}>
+                <div className={styles.voiceSelection}>
+                    <label className={styles.voiceLabel}>
                         Voice Selection:
                     </label>
                     {isLoadingVoices ? (
-                        <span style={{ fontSize: "12px", color: "#666" }}>Loading voices...</span>
+                        <span className={styles.loadingText}>Loading voices...</span>
                     ) : (
                         <select
                             value={selectedVoice || ''}
                             onChange={(e) => setSelectedVoice(e.target.value)}
-                            disabled={isGeneratingAudio || isPlaying}
-                            style={{
-                                width: "100%",
-                                padding: "8px",
-                                borderRadius: "4px",
-                                border: "1px solid #ddd"
-                            }}
+                            disabled={ttsState.isGenerating || ttsState.isPlaying}
+                            className={styles.select}
                         >
                             <option value="">Select a voice</option>
                             {voices.map((voice) => (
@@ -453,26 +422,26 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     )}
                 </div>
 
-                <div style={{ marginTop: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <div className={styles.buttonContainer}>
                     <ThActionButton
-                        isDisabled={!selectedVoice || isGeneratingAudio || isPlaying}
-                        onClick={handleGenerateTts}
+                        isDisabled={!selectedVoice || ttsState.isGenerating || ttsState.isPlaying}
+                        onPress={handleGenerateTts}
                         style={{ backgroundColor: "#4CAF50", color: "white" }}
                     >
-                        {isGeneratingAudio ? 'Generating...' : 'Start TTS'}
+                        {ttsState.isGenerating ? 'Generating...' : 'Start TTS'}
                     </ThActionButton>
 
                     <ThActionButton
-                        onClick={isPaused ? handleResume : handlePause}
-                        isDisabled={!isPlaying && !isPaused}
+                        onPress={ttsState.isPaused ? handleResume : handlePause}
+                        isDisabled={!ttsState.isPlaying && !ttsState.isPaused}
                         style={{ backgroundColor: "#FF9800", color: "white" }}
                     >
-                        {isPaused ? 'Resume' : 'Pause'}
+                        {ttsState.isPaused ? 'Resume' : 'Pause'}
                     </ThActionButton>
 
                     <ThActionButton
-                        onClick={handleStop}
-                        isDisabled={!isPlaying && !isPaused}
+                        onPress={handleStop}
+                        isDisabled={!ttsState.isPlaying && !ttsState.isPaused}
                         style={{ backgroundColor: "#f44336", color: "white" }}
                     >
                         Stop
@@ -480,14 +449,14 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 </div>
 
                 {/* Keyboard Shortcuts Section */}
-                <div style={{ marginTop: "20px", fontSize: "12px", backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px" }}>
-                    <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "bold" }}>
+                <div className={styles.shortcutsContainer}>
+                    <h4 className={styles.shortcutsTitle}>
                         Keyboard Shortcuts:
                     </h4>
                     {keyboardShortcuts.map((shortcut, index) => (
-                        <div key={index} style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
+                        <div key={index} className={styles.shortcutItem}>
                             <span>{shortcut.description}:</span>
-                            <code style={{ backgroundColor: "#e0e0e0", padding: "2px 4px", borderRadius: "3px" }}>
+                            <code className={styles.shortcutCode}>
                                 {formatShortcut(shortcut)}
                             </code>
                         </div>
