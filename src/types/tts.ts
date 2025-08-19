@@ -30,6 +30,8 @@ export const TTS_CONSTANTS = {
     DEFAULT_VOICE_ID: 'JBFqnCBsd6RMkjVDRZzb',
     CHUNK_SIZE_FOR_TESTING: 1,
     MAX_CHUNKS: 5,
+    // Reading modes
+    ENABLE_WHOLE_PAGE_READING: true,
 } as const;
 
 export const IFRAME_SELECTORS = [

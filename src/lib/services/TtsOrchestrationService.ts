@@ -61,7 +61,10 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
         try {
             const chunks = await this.textExtractor.extractTextChunks();
-            const chunksToSend = chunks.slice(0, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING);
+            // Choose reading mode based on configuration
+            const chunksToSend = TTS_CONSTANTS.ENABLE_WHOLE_PAGE_READING
+                ? chunks
+                : chunks.slice(0, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING);
 
             console.log(`Starting TTS with ${chunksToSend.length} chunks`);
 
