@@ -86,7 +86,7 @@ export class AzureAdapter implements IPlaybackAdapter {
         });
 
         if (!response.ok) {
-            this.createError('API_ERROR', `API Error: ${response.status} ${response.statusText}`);
+            throw this.createError('API_ERROR', `API Error: ${response.status} ${response.statusText}`);
         }
 
         return response;

@@ -1,49 +1,80 @@
 import { TTSAdapterFactory, AdapterType } from '../../lib/AdapterFactory';
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
+import { DefaultTextProcessor } from '../../lib/TextProcessor';
 
-// Mock the adapters
 jest.mock('../../lib/adapters/ElevenLabsAdapter');
 jest.mock('../../lib/adapters/AzureAdapter');
 
-describe('TTSAdapterFactory', () => {
+describe('TTSAdapterFactory - SOLID Architecture', () => {
   let factory: TTSAdapterFactory;
 
   beforeEach(() => {
     factory = new TTSAdapterFactory();
     jest.clearAllMocks();
+
+    // Reset mock implementations to return proper constructor instances
+    (ElevenLabsAdapter as jest.Mock).mockImplementation(function(textProcessor) {
+      const instance = Object.create(ElevenLabsAdapter.prototype);
+      instance.textProcessor = textProcessor;
+      instance.play = jest.fn();
+      instance.pause = jest.fn();
+      instance.resume = jest.fn();
+      instance.stop = jest.fn();
+      instance.cleanup = jest.fn();
+      instance.on = jest.fn();
+      instance.off = jest.fn();
+      instance.emitEvent = jest.fn();
+      instance.updatePlaybackState = jest.fn();
+      return instance;
+    });
+
+    (AzureAdapter as jest.Mock).mockImplementation(function(textProcessor) {
+      const instance = Object.create(AzureAdapter.prototype);
+      instance.textProcessor = textProcessor;
+      instance.play = jest.fn();
+      instance.pause = jest.fn();
+      instance.resume = jest.fn();
+      instance.stop = jest.fn();
+      instance.cleanup = jest.fn();
+      instance.on = jest.fn();
+      instance.off = jest.fn();
+      instance.emitEvent = jest.fn();
+      instance.updatePlaybackState = jest.fn();
+      return instance;
+    });
   });
 
   describe('Factory Pattern Implementation', () => {
     test('createAdapter creates ElevenLabsAdapter for elevenlabs type', () => {
-      const config = { apiKey: 'test-key', voiceId: 'test-voice' };
-      const adapter = factory.createAdapter('elevenlabs', config);
+      const adapter = factory.createAdapter('elevenlabs');
 
-      expect(ElevenLabsAdapter).toHaveBeenCalled();
+      expect(ElevenLabsAdapter).toHaveBeenCalledWith(expect.any(DefaultTextProcessor));
       expect(adapter).toBeInstanceOf(ElevenLabsAdapter);
     });
 
     test('createAdapter creates AzureAdapter for azure type', () => {
-      const config = { apiKey: 'test-key', voiceId: 'test-voice', region: 'test-region' };
-      const adapter = factory.createAdapter('azure', config);
+      const adapter = factory.createAdapter('azure');
 
-      expect(AzureAdapter).toHaveBeenCalled();
+      expect(AzureAdapter).toHaveBeenCalledWith(expect.any(DefaultTextProcessor));
       expect(adapter).toBeInstanceOf(AzureAdapter);
     });
 
     test('createAdapter throws error for unsupported adapter type', () => {
-      const factory = new TTSAdapterFactory();
-      const config = { apiKey: 'test-key', voiceId: 'test-voice' };
-      expect(() => factory.createAdapter('web-speech', config))
+      expect(() => factory.createAdapter('web-speech'))
         .toThrow('Web Speech API adapter not yet implemented');
     });
 
+    test('createAdapter throws error for invalid adapter type', () => {
+      expect(() => factory.createAdapter('invalid' as AdapterType))
+        .toThrow('Unknown adapter type: invalid');
+    });
+
     test('createAdapter handles null/undefined input gracefully', () => {
-      const config = { apiKey: 'test-key', voiceId: 'test-voice' };
-      expect(() => factory.createAdapter(null as any, config))
+      expect(() => factory.createAdapter(null as any))
         .toThrow();
 
-      expect(() => factory.createAdapter(undefined as any, config))
+      expect(() => factory.createAdapter(undefined as any))
         .toThrow();
     });
   });
@@ -96,129 +127,158 @@ describe('TTSAdapterFactory', () => {
 
   describe('Type Safety', () => {
     test('AdapterType union restricts to valid types', () => {
-      const config = { apiKey: 'test-key', voiceId: 'test-voice' };
       const validTypes: AdapterType[] = ['elevenlabs', 'azure'];
 
       validTypes.forEach(type => {
-        expect(() => factory.createAdapter(type, config)).not.toThrow();
+        expect(() => factory.createAdapter(type)).not.toThrow();
       });
     });
 
     test('adapter creation is type-safe', () => {
-      const config = { apiKey: 'test-key', voiceId: 'test-voice' };
-      const elevenlabsAdapter = factory.createAdapter('elevenlabs', config);
-      const azureAdapter = factory.createAdapter('azure', config);
+      const elevenlabsAdapter = factory.createAdapter('elevenlabs');
+      const azureAdapter = factory.createAdapter('azure');
 
       expect(elevenlabsAdapter).toBeDefined();
       expect(azureAdapter).toBeDefined();
     });
   });
 
-  describe('Configuration Handling', () => {
-    test('adapters are created with provided configuration', () => {
-      const config = {
-        apiKey: 'test-key',
-        voiceId: 'test-voice',
-        modelId: 'test-model'
-      };
+  describe('Dependency Injection Architecture', () => {
+    test('factory creates adapters with proper dependency injection', () => {
+      factory.createAdapter('elevenlabs');
 
-      factory.createAdapter('elevenlabs', config);
+      const constructorCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
 
-      // Verify ElevenLabsAdapter was called with configuration parameters
-      expect(ElevenLabsAdapter).toHaveBeenCalledWith(
-        config,
-        expect.any(Object)  // textProcessor
-      );
+      expect(constructorCall).toHaveLength(1);
+      expect(constructorCall[0]).toBeInstanceOf(DefaultTextProcessor);
     });
 
-    test('azure adapter receives correct configuration', () => {
-      const config = {
-        apiKey: 'azure-key',
-        region: 'test-region',
-        voiceId: 'azure-voice'
-      };
+    test('factory uses consistent text processor instance', () => {
+      factory.createAdapter('elevenlabs');
+      factory.createAdapter('azure');
 
-      factory.createAdapter('azure', config);
+      const elevenlabsCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
+      const azureCall = (AzureAdapter as jest.Mock).mock.calls[0];
 
-      // Verify AzureAdapter was called with configuration parameters
-      expect(AzureAdapter).toHaveBeenCalledWith(
-        config,
-        expect.any(Object)  // textProcessor
-      );
+      expect(elevenlabsCall[0]).toBe(azureCall[0]);
+    });
+
+    test('adapters receive proper dependency structure', () => {
+      factory.createAdapter('elevenlabs');
+      factory.createAdapter('azure');
+
+      const elevenlabsCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
+      const azureCall = (AzureAdapter as jest.Mock).mock.calls[0];
+
+      expect(elevenlabsCall).toHaveLength(1);
+      expect(azureCall).toHaveLength(1);
+
+      const textProcessor = elevenlabsCall[0];
+      expect(textProcessor).toHaveProperty('formatText');
+      expect(textProcessor).toHaveProperty('validateText');
     });
   });
 
-  describe('Extensibility', () => {
-    test('factory supports adding new adapter types without breaking existing code', () => {
-      const config = { apiKey: 'test-key' };
-      // Test that existing adapters still work
-      const elevenlabsAdapter = factory.createAdapter('elevenlabs', config);
-      const azureAdapter = factory.createAdapter('azure', config);
+  describe('SOLID Principles Compliance', () => {
+    test('Single Responsibility: Factory only creates adapters', () => {
+      expect(factory.createAdapter).toBeDefined();
 
-      expect(elevenlabsAdapter).toBeInstanceOf(ElevenLabsAdapter);
-      expect(azureAdapter).toBeInstanceOf(AzureAdapter);
+      expect(factory).not.toHaveProperty('play');
+      expect(factory).not.toHaveProperty('formatText');
+      expect(factory).not.toHaveProperty('validateText');
     });
 
-    test('factory maintains consistent interface across adapter types', () => {
-      const config = { apiKey: 'test-key' };
-      const elevenlabsAdapter = factory.createAdapter('elevenlabs', config);
-      const azureAdapter = factory.createAdapter('azure', config);
+    test('Open/Closed: Factory is open for extension, closed for modification', () => {
+      const originalAdapterCount = TTSAdapterFactory.getAvailableAdapters().length;
 
-      // Both adapters should be instances of their respective classes
-      expect(elevenlabsAdapter).toBeInstanceOf(ElevenLabsAdapter);
-      expect(azureAdapter).toBeInstanceOf(AzureAdapter);
+      factory.createAdapter('elevenlabs');
+      factory.createAdapter('azure');
 
-      // Both should implement the same interface (verified by TypeScript compilation)
-      expect(typeof (elevenlabsAdapter as any).play).toBe('function');
-      expect(typeof (azureAdapter as any).play).toBe('function');
+      expect(TTSAdapterFactory.getAvailableAdapters().length).toBe(originalAdapterCount);
+    });
+
+    test('Dependency Inversion: Factory depends on abstractions', () => {
+      factory.createAdapter('elevenlabs');
+
+      const constructorCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
+      const textProcessor = constructorCall[0];
+
+      expect(typeof textProcessor.formatText).toBe('function');
+      expect(typeof textProcessor.validateText).toBe('function');
+    });
+
+    test('Interface Segregation: Clean, focused interfaces', () => {
+      const elevenlabsAdapter = factory.createAdapter('elevenlabs');
+      const azureAdapter = factory.createAdapter('azure');
+
+      const expectedMethods = ['play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off'];
+
+      expectedMethods.forEach(method => {
+        expect(typeof (elevenlabsAdapter as any)[method]).toBe('function');
+        expect(typeof (azureAdapter as any)[method]).toBe('function');
+      });
     });
   });
 
   describe('Error Handling', () => {
     test('factory provides clear error messages for unimplemented types', () => {
-      const config = { apiKey: 'test-key' };
-
-      expect(() => factory.createAdapter('web-speech', config))
+      expect(() => factory.createAdapter('web-speech'))
         .toThrow('Web Speech API adapter not yet implemented');
     });
 
     test('factory handles adapter instantiation errors gracefully', () => {
-      const config = { apiKey: 'test-key' };
-      // Mock ElevenLabsAdapter to throw an error during instantiation
       (ElevenLabsAdapter as jest.Mock).mockImplementation(() => {
         throw new Error('Adapter initialization failed');
       });
 
-      expect(() => factory.createAdapter('elevenlabs', config))
+      expect(() => factory.createAdapter('elevenlabs'))
         .toThrow('Adapter initialization failed');
+    });
+
+    test('factory validates adapter types strictly', () => {
+      const invalidTypes = ['', 'invalid', 'openai', 'google'];
+
+      invalidTypes.forEach(type => {
+        expect(() => factory.createAdapter(type as AdapterType))
+          .toThrow(`Unknown adapter type: ${type}`);
+      });
     });
   });
 
   describe('Performance Considerations', () => {
-    test('factory creates new instances for each call', () => {
-      const config = { apiKey: 'test-key' };
-      const adapter1 = factory.createAdapter('elevenlabs', config);
-      const adapter2 = factory.createAdapter('elevenlabs', config);
+    test('factory creates new adapter instances for each call', () => {
+      const adapter1 = factory.createAdapter('elevenlabs');
+      const adapter2 = factory.createAdapter('elevenlabs');
 
-      // Should be different instances
       expect(adapter1).not.toBe(adapter2);
       expect(ElevenLabsAdapter).toHaveBeenCalledTimes(2);
     });
 
     test('factory does not cache adapter instances', () => {
-      const config = { apiKey: 'test-key' };
-      // Create multiple adapters
-      factory.createAdapter('elevenlabs', config);
-      factory.createAdapter('azure', config);
-      factory.createAdapter('elevenlabs', config);
+      factory.createAdapter('elevenlabs');
+      factory.createAdapter('azure');
+      factory.createAdapter('elevenlabs');
 
-      // Each call should create a new instance
       expect(ElevenLabsAdapter).toHaveBeenCalledTimes(2);
       expect(AzureAdapter).toHaveBeenCalledTimes(1);
     });
+
+    test('factory reuses text processor instance for efficiency', () => {
+      factory.createAdapter('elevenlabs');
+      factory.createAdapter('azure');
+      factory.createAdapter('elevenlabs');
+
+      const calls = [
+        ...(ElevenLabsAdapter as jest.Mock).mock.calls,
+        ...(AzureAdapter as jest.Mock).mock.calls
+      ];
+
+      const textProcessors = calls.map(call => call[0]);
+      expect(textProcessors.every(tp => tp === textProcessors[0])).toBe(true);
+    });
   });
 
-  describe('Adapter Options Structure', () => {
+  describe('Adapter Options Metadata', () => {
     test('options contain human-readable labels', () => {
       const options = TTSAdapterFactory.getAvailableAdapters();
 
@@ -233,12 +293,10 @@ describe('TTSAdapterFactory', () => {
       const options = TTSAdapterFactory.getAvailableAdapters();
 
       options.forEach((option: any) => {
-        // Names should be user-friendly (no underscores, proper casing)
         expect(option.name).not.toContain('_');
         expect(option.name.length).toBeGreaterThan(0);
         expect(option.name[0]).toEqual(option.name[0].toUpperCase());
 
-        // Descriptions should be informative
         expect(option.description.length).toBeGreaterThan(10);
       });
     });
@@ -268,42 +326,82 @@ describe('TTSAdapterFactory', () => {
     });
   });
 
-  describe('Dependency Injection', () => {
-    test('factory creates adapters with proper dependencies', () => {
-      const config = { apiKey: 'test-key' };
-      factory.createAdapter('elevenlabs', config);
+  describe('Interface Compliance', () => {
+    test('factory implements IAdapterFactory interface', () => {
+      expect(typeof factory.createAdapter).toBe('function');
 
-      const constructorCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
-
-      // Should receive config and textProcessor
-      expect(constructorCall).toHaveLength(2);
-      expect(constructorCall[0]).toBeDefined(); // config
-      expect(constructorCall[1]).toBeDefined(); // textProcessor
+      const adapter = factory.createAdapter('elevenlabs');
+      expect(adapter).toBeDefined();
     });
 
-    test('adapters receive consistent dependency structure', () => {
-      const config = { apiKey: 'test-key' };
-      factory.createAdapter('elevenlabs', config);
-      factory.createAdapter('azure', config);
+    test('created adapters implement consistent interfaces', () => {
+      const elevenlabsAdapter = factory.createAdapter('elevenlabs');
+      const azureAdapter = factory.createAdapter('azure');
+
+      const expectedMethods = ['play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off'];
+
+      expectedMethods.forEach(method => {
+        expect(typeof (elevenlabsAdapter as any)[method]).toBe('function');
+        expect(typeof (azureAdapter as any)[method]).toBe('function');
+      });
+    });
+
+    test('factory supports extensibility without breaking changes', () => {
+      const elevenlabsAdapter = factory.createAdapter('elevenlabs');
+      const azureAdapter = factory.createAdapter('azure');
+
+      expect(elevenlabsAdapter).toBeInstanceOf(ElevenLabsAdapter);
+      expect(azureAdapter).toBeInstanceOf(AzureAdapter);
+    });
+  });
+
+  describe('Configuration Management', () => {
+    test('adapters handle configuration internally with environment variables', () => {
+      factory.createAdapter('elevenlabs');
+      factory.createAdapter('azure');
 
       const elevenlabsCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
       const azureCall = (AzureAdapter as jest.Mock).mock.calls[0];
 
-      // Both should receive the same dependency structure
-      expect(elevenlabsCall).toHaveLength(2);
-      expect(azureCall).toHaveLength(2);
+      expect(elevenlabsCall).toHaveLength(1);
+      expect(azureCall).toHaveLength(1);
     });
 
-    test('factory uses shared text processor instance', () => {
-      const config = { apiKey: 'test-key' };
-      factory.createAdapter('elevenlabs', config);
-      factory.createAdapter('azure', config);
+    test('factory follows separation of concerns for configuration', () => {
+      expect(factory).not.toHaveProperty('config');
+      expect(factory).not.toHaveProperty('apiKey');
+      expect(factory).not.toHaveProperty('voiceId');
 
-      const elevenlabsCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
-      const azureCall = (AzureAdapter as jest.Mock).mock.calls[0];
+      factory.createAdapter('elevenlabs');
+      expect(ElevenLabsAdapter).toHaveBeenCalledWith(expect.any(DefaultTextProcessor));
+    });
+  });
 
-      // Both should receive the same textProcessor instance
-      expect(elevenlabsCall[1]).toBe(azureCall[1]);
+  describe('Extensibility and Future-Proofing', () => {
+    test('factory can be extended with new adapter types without modification', () => {
+      const availableTypes = TTSAdapterFactory.getAvailableAdapters().map(opt => opt.key);
+      expect(availableTypes).toContain('web-speech');
+
+      expect(() => factory.createAdapter('web-speech'))
+        .toThrow('Web Speech API adapter not yet implemented');
+    });
+
+    test('factory maintains backward compatibility', () => {
+      const adapter = factory.createAdapter('elevenlabs');
+      expect(adapter).toBeInstanceOf(ElevenLabsAdapter);
+
+      expect(TTSAdapterFactory.getAvailableAdapters).toBeDefined();
+      expect(TTSAdapterFactory.getImplementedAdapters).toBeDefined();
+    });
+
+    test('factory design supports plugin architecture', () => {
+      const options = TTSAdapterFactory.getAvailableAdapters();
+
+      options.forEach(option => {
+        expect(option).toHaveProperty('isImplemented');
+        expect(option).toHaveProperty('requiresApiKey');
+        expect(option).toHaveProperty('description');
+      });
     });
   });
 });

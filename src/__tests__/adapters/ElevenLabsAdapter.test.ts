@@ -1,6 +1,5 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 
-// Mock ElevenLabs SDK
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
   ElevenLabsApi: jest.fn().mockImplementation(() => ({
     textToSpeech: {
@@ -24,14 +23,14 @@ describe('ElevenLabsAdapter', () => {
     mockTextProcessor = {
       formatText: jest.fn((text) => text),
       processText: jest.fn((text) => text),
+      validateText: jest.fn((text) => true), // Always return true for tests
     };
 
-    adapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
+    adapter = new ElevenLabsAdapter(mockTextProcessor);
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    // Clean up any audio elements
     if ((adapter as any).currentAudio) {
       (adapter as any).currentAudio.pause();
       (adapter as any).currentAudio = null;
@@ -40,14 +39,12 @@ describe('ElevenLabsAdapter', () => {
 
   describe('Text-to-Speech Processing', () => {
     test('play method processes text chunk correctly', async () => {
-      const mockAudioData = new Uint8Array([1, 2, 3, 4]);
       const textChunk = {
         text: 'Hello world',
         element: 'paragraph',
         index: 0
       };
 
-      // Mock the executePlayRequest method
       jest.spyOn(adapter as any, 'executePlayRequest').mockResolvedValue({
         requestId: 'test-request-id',
         audio: new Audio()
@@ -77,13 +74,8 @@ describe('ElevenLabsAdapter', () => {
     });
 
     test('validateAndFormatText handles various input types', () => {
-      // Test with string
       expect(() => (adapter as any).validateAndFormatText('Hello')).not.toThrow();
-
-      // Test with array
       expect(() => (adapter as any).validateAndFormatText(['Hello', 'World'])).not.toThrow();
-
-      // Test with object
       expect(() => (adapter as any).validateAndFormatText({ text: 'Hello' })).not.toThrow();
     });
   });
@@ -208,19 +200,16 @@ describe('ElevenLabsAdapter', () => {
       };
 
       (adapter as any).currentAudio = mockAudio;
-
-      // Test pause state
       (adapter as any).isPlaying = true;
+
       adapter.pause();
       expect((adapter as any).isPlaying).toBe(false);
       expect((adapter as any).isPaused).toBe(true);
 
-      // Test resume state
       adapter.resume();
       expect((adapter as any).isPlaying).toBe(true);
       expect((adapter as any).isPaused).toBe(false);
 
-      // Test stop state
       adapter.stop();
       expect((adapter as any).isPlaying).toBe(false);
       expect((adapter as any).isPaused).toBe(false);
@@ -244,7 +233,6 @@ describe('ElevenLabsAdapter', () => {
 
       adapter.resume();
 
-      // Should still attempt to play despite error
       expect(mockAudio.play).toHaveBeenCalled();
     });
 
@@ -266,10 +254,10 @@ describe('ElevenLabsAdapter', () => {
   });
 
   describe('Configuration Management', () => {
-    test('uses provided configuration correctly', () => {
-      expect((adapter as any).config.voiceId).toBe('test-voice-id');
+    test('uses default configuration correctly', () => {
+      expect((adapter as any).config.voiceId).toBe('JBFqnCBsd6RMkjVDRZzb');
       expect((adapter as any).config.modelId).toBe('eleven_multilingual_v2');
-      expect((adapter as any).config.apiKey).toBe('test-api-key');
+      expect((adapter as any).config.apiKey).toBe('test-elevenlabs-key'); // From jest.setup.js
     });
 
     test('integrates with text processor', () => {

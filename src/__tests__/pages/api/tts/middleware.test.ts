@@ -1,148 +1,384 @@
-// Mock the Next.js Request/Response globals for Node.js environment
-Object.defineProperty(global, 'Request', {
-  value: class MockRequest {
-    url: string;
-    method: string;
-    headers: Map<string, string>;
-    body: any;
-
-    constructor(url: string, init?: any) {
-      this.url = url;
-      this.method = init?.method || 'GET';
-      this.headers = new Map();
-      this.body = init?.body;
-
-      if (init?.headers) {
-        Object.entries(init.headers).forEach(([key, value]) => {
-          this.headers.set(key.toLowerCase(), value as string);
-        });
-      }
-    }
-
-    clone() {
-      return new MockRequest(this.url, {
-        method: this.method,
-        headers: Object.fromEntries(this.headers),
-        body: this.body
-      });
-    }
-  },
-});
-
-Object.defineProperty(global, 'Response', {
-  value: class MockResponse {
-    status: number;
-    headers: Map<string, string>;
-    body: any;
-
-    constructor(body?: any, init?: any) {
-      this.status = init?.status || 200;
-      this.headers = new Map();
-      this.body = body;
-    }
-
-    static json(data: any, init?: any) {
-      return new MockResponse(JSON.stringify(data), init);
-    }
-  },
-});
-
-import { middleware } from '../../../../pages/api/tts/middleware';
 import { NextRequest } from 'next/server';
 
-describe('TTS API middleware', () => {
-  test('allows POST requests to continue', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'POST',
-      body: JSON.stringify({ text: 'test', voiceId: 'test' }),
+// Mock URL constructor for tests
+global.URL = jest.fn((url) => ({
+  href: url,
+  origin: 'http://localhost:3000',
+  pathname: url.replace('http://localhost:3000', ''),
+  toString: () => url
+})) as any;
+
+// Mock NextResponse before importing the middleware
+jest.mock('next/server', () => ({
+  NextRequest: jest.fn(),
+  NextResponse: {
+    json: jest.fn((data, init = {}) => ({
+      body: data,
+      status: init.status || 200,
       headers: {
-        'Content-Type': 'application/json',
+        get: jest.fn((key) => {
+          const headers = { 'content-type': 'application/json', ...init.headers };
+          return headers[key.toLowerCase()];
+        }),
+        ...init.headers
       },
+      json: async () => data,
+    })),
+    next: jest.fn(() => ({
+      status: 200,
+      headers: {
+        get: jest.fn(),
+      },
+    })),
+  },
+}));
+
+import { middleware } from '../../../../pages/api/tts/middleware';
+import { TTSErrorResponse, TTSRequestBody } from '../../../../types/tts';
+
+describe('TTS API Middleware', () => {
+  const createNextRequest = (url: string, options: {
+    method: string;
+    body?: any;
+    headers?: Record<string, string>;
+  }) => {
+    // Mock NextRequest without calling the actual constructor
+    const mockRequest = {
+      url,
+      method: options.method,
+      headers: new Map(Object.entries({
+        'Content-Type': 'application/json',
+        ...options.headers,
+      })),
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      json: async () => options.body || {},
+      text: async () => options.body ? JSON.stringify(options.body) : '',
+      nextUrl: new URL(url),
+    };
+
+    return mockRequest as any;
+  };
+
+  const validateErrorResponse = (data: any): data is TTSErrorResponse => {
+    return (
+      typeof data === 'object' &&
+      data !== null &&
+      typeof data.error === 'string' &&
+      (data.details === undefined || typeof data.details === 'string')
+    );
+  };
+  describe('POST Request Validation and Processing', () => {
+    test('allows POST requests with valid TTSRequestBody to continue', async () => {
+      const validRequestBody: TTSRequestBody = {
+        text: 'Hello world',
+        voiceId: 'test-voice-id'
+      };
+
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'POST',
+        body: validRequestBody,
+      });
+
+      const response = middleware(request);
+
+      expect(response).toBeDefined();
+      expect(response.status).not.toBe(405);
     });
 
-    const response = await middleware(request);
+    test('allows POST requests with optional TTSRequestBody fields', async () => {
+      const requestBodyWithOptionals: TTSRequestBody = {
+        text: 'Hello world',
+        voiceId: 'test-voice-id',
+        modelId: 'eleven_turbo_v2',
+        useContext: true
+      };
 
-    // NextResponse.next() doesn't have a direct status, but we can check it's not an error response
-    expect(response).toBeDefined();
+      const request = createNextRequest('http://localhost:3000/api/tts/elevenlabs', {
+        method: 'POST',
+        body: requestBodyWithOptionals,
+      });
+
+      const response = middleware(request);
+
+      expect(response).toBeDefined();
+      expect(response.status).not.toBe(405);
+    });
+
+    test('allows POST requests to all TTS endpoints', async () => {
+      const endpoints = [
+        'http://localhost:3000/api/tts/azure',
+        'http://localhost:3000/api/tts/elevenlabs'
+      ];
+
+      const validRequestBody: TTSRequestBody = {
+        text: 'Test text',
+        voiceId: 'test-voice'
+      };
+
+      for (const endpoint of endpoints) {
+        const request = createNextRequest(endpoint, {
+          method: 'POST',
+          body: validRequestBody,
+        });
+
+        const response = middleware(request);
+
+        expect(response).toBeDefined();
+        expect(response.status).not.toBe(405);
+      }
+    });
   });
 
-  test('rejects GET requests with 405', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'GET',
+  describe('HTTP Method Restriction and Security', () => {
+    const ttsEndpoints = [
+      'http://localhost:3000/api/tts/azure',
+      'http://localhost:3000/api/tts/elevenlabs'
+    ];
+
+    test('rejects GET requests with 405 Method Not Allowed', async () => {
+      for (const endpoint of ttsEndpoints) {
+        const request = createNextRequest(endpoint, {
+          method: 'GET',
+        });
+
+        const response = middleware(request);
+
+        expect(response.status).toBe(405);
+
+        const data = await response.json() as TTSErrorResponse;
+        expect(validateErrorResponse(data)).toBe(true);
+        expect(data.error).toBe('Method not allowed');
+        expect(data.details).toBe('Only POST requests are accepted');
+      }
     });
 
-    const response = await middleware(request);
+    test('rejects PUT requests with proper error response', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'PUT',
+        body: { text: 'test' },
+      });
 
-    expect(response.status).toBe(405);
+      const response = middleware(request);
 
-    const data = await response.json();
-    expect(data.error).toBe('Method not allowed');
-    expect(data.details).toBe('Only POST requests are accepted');
+      expect(response.status).toBe(405);
+
+      const data = await response.json() as TTSErrorResponse;
+      expect(validateErrorResponse(data)).toBe(true);
+      expect(data.error).toBe('Method not allowed');
+    });
+
+    test('rejects DELETE requests with security considerations', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'DELETE',
+      });
+
+      const response = middleware(request);
+
+      expect(response.status).toBe(405);
+
+      const data = await response.json() as TTSErrorResponse;
+      expect(validateErrorResponse(data)).toBe(true);
+    });
+
+    test('rejects PATCH requests consistently', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/elevenlabs', {
+        method: 'PATCH',
+        body: { text: 'partial update' },
+      });
+
+      const response = middleware(request);
+
+      expect(response.status).toBe(405);
+    });
+
+    test('rejects HEAD requests for security', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'HEAD',
+      });
+
+      const response = middleware(request);
+
+      expect(response.status).toBe(405);
+    });
+
+    test('rejects OPTIONS requests to prevent CORS preflight exploitation', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'OPTIONS',
+      });
+
+      const response = middleware(request);
+
+      expect(response.status).toBe(405);
+    });
   });
 
-  test('rejects PUT requests with 405', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'PUT',
+  describe('SOLID Architecture Compliance', () => {
+    test('Single Responsibility: Middleware only handles HTTP method validation', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'POST',
+        body: { text: 'test', voiceId: 'test' } as TTSRequestBody,
+      });
+
+      const response = middleware(request);
+
+      expect(response).toBeDefined();
+      expect(response.status).not.toBe(405);
     });
 
-    const response = await middleware(request);
+    test('Open/Closed: Middleware works with any TTS endpoint extension', async () => {
+      const futureEndpoints = [
+        'http://localhost:3000/api/tts/google',
+        'http://localhost:3000/api/tts/amazon',
+        'http://localhost:3000/api/tts/custom-provider'
+      ];
 
-    expect(response.status).toBe(405);
+      const validRequestBody: TTSRequestBody = {
+        text: 'Test text',
+        voiceId: 'test-voice'
+      };
 
-    const data = await response.json();
-    expect(data.error).toBe('Method not allowed');
+      for (const endpoint of futureEndpoints) {
+        const request = createNextRequest(endpoint, {
+          method: 'POST',
+          body: validRequestBody,
+        });
+
+        const response = middleware(request);
+
+        expect(response).toBeDefined();
+        expect(response.status).not.toBe(405);
+      }
+    });
+
+    test('Interface Segregation: Uses focused TTSErrorResponse interface', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'GET',
+      });
+
+      const response = middleware(request);
+      const data = await response.json() as TTSErrorResponse;
+
+      expect(data).toHaveProperty('error');
+      expect(data).toHaveProperty('details');
+      expect(Object.keys(data).length).toBeLessThanOrEqual(2);
+    });
+
+    test('Dependency Inversion: Depends on Next.js abstractions', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'POST',
+        body: { text: 'test', voiceId: 'test' } as TTSRequestBody,
+      });
+
+      expect(request.method).toBe('POST');
+      expect(request.url).toContain('/api/tts/azure');
+
+      const response = middleware(request);
+      expect(response).toBeDefined();
+    });
   });
 
-  test('rejects DELETE requests with 405', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'DELETE',
+  describe('Edge Cases and Error Handling', () => {
+    test('handles requests with missing body gracefully', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'POST',
+      });
+
+      const response = middleware(request);
+
+      expect(response).toBeDefined();
+      expect(response.status).not.toBe(405);
     });
 
-    const response = await middleware(request);
+    test('handles requests with malformed JSON body', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'POST',
+        body: 'invalid json {', // This will be stringified, but that's intentional for testing
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    expect(response.status).toBe(405);
+      const response = middleware(request);
+
+      expect(response).toBeDefined();
+      expect(response.status).not.toBe(405);
+    });
+
+    test('validates consistent error response structure', async () => {
+      const invalidMethods = ['GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
+
+      for (const method of invalidMethods) {
+        const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+          method,
+        });
+
+        const response = middleware(request);
+
+        expect(response.status).toBe(405);
+
+        const data = await response.json() as TTSErrorResponse;
+        expect(validateErrorResponse(data)).toBe(true);
+        expect(data.error).toBe('Method not allowed');
+        expect(typeof data.details).toBe('string');
+      }
+    });
+
+    test('handles case-sensitive HTTP methods correctly', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'post', // lowercase
+      });
+
+      const response = middleware(request);
+
+      expect(response.status).toBe(405);
+    });
+
+    test('preserves request context for valid POST requests', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'POST',
+        body: { text: 'test', voiceId: 'test' } as TTSRequestBody,
+        headers: {
+          'Authorization': 'Bearer test-token',
+          'User-Agent': 'test-agent',
+        },
+      });
+
+      const response = middleware(request);
+
+      expect(response).toBeDefined();
+      expect(response.status).not.toBe(405);
+    });
   });
 
-  test('rejects PATCH requests with 405', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'PATCH',
+  describe('Configuration and Matcher Validation', () => {
+    test('validates middleware matcher configuration', () => {
+      const { config } = require('../../../../pages/api/tts/middleware');
+
+      expect(config).toBeDefined();
+      expect(config.matcher).toBe('/api/tts/:path*');
     });
 
-    const response = await middleware(request);
+    test('ensures middleware applies to correct URL patterns', async () => {
+      const validUrls = [
+        'http://localhost:3000/api/tts/azure',
+        'http://localhost:3000/api/tts/elevenlabs',
+        'http://localhost:3000/api/tts/custom-provider'
+      ];
 
-    expect(response.status).toBe(405);
-  });
-
-  test('rejects HEAD requests with 405', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'HEAD',
+      for (const url of validUrls) {
+        expect(url).toMatch(/\/api\/tts\/.+/);
+      }
     });
 
-    const response = await middleware(request);
+    test('validates response headers for error responses', async () => {
+      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        method: 'GET',
+      });
 
-    expect(response.status).toBe(405);
-  });
+      const response = middleware(request);
 
-  test('rejects OPTIONS requests with 405', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/azure', {
-      method: 'OPTIONS',
+      expect(response.status).toBe(405);
+      expect(response.headers.get('content-type')).toContain('application/json');
     });
-
-    const response = await middleware(request);
-
-    expect(response.status).toBe(405);
-  });
-
-  test('works with different TTS endpoints', async () => {
-    const request = new NextRequest('http://localhost:3000/api/tts/elevenlabs', {
-      method: 'GET',
-    });
-
-    const response = await middleware(request);
-
-    expect(response.status).toBe(405);
-
-    const data = await response.json();
-    expect(data.error).toBe('Method not allowed');
   });
 });

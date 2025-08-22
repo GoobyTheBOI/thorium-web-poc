@@ -148,7 +148,9 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
     destroy(): void {
         console.log('TTS Orchestration Service: Destroying');
-        this.stopReading();
+        // Always stop the adapter during cleanup, regardless of current state
+        this.adapter.stop();
+        this.isExecuting = false;
     }
 
     private setupAdapterCallbacks(): void {

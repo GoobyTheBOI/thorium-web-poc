@@ -3,6 +3,42 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import handler from '../../../../pages/api/tts/azure';
 import { TTSErrorResponse, TTSRequestBody } from '../../../../types/tts';
 
+// Simplified Azure SDK mock for API contract testing
+jest.mock('microsoft-cognitiveservices-speech-sdk', () => {
+  const mockResult = {
+    reason: 'SynthesizingAudioCompleted',
+    audioData: new ArrayBuffer(2048),
+  };
+
+  const mockSynthesizer = {
+    speakSsmlAsync: jest.fn((ssml, successCallback, errorCallback) => {
+      // Simulate successful synthesis
+      successCallback(mockResult);
+    }),
+    close: jest.fn(),
+  };
+
+  return {
+    SpeechConfig: {
+      fromSubscription: jest.fn(() => ({
+        speechSynthesisVoiceName: 'en-US-AriaNeural',
+        speechSynthesisOutputFormat: 'Audio16Khz32KBitRateMonoMp3',
+      })),
+    },
+    AudioConfig: {
+      fromDefaultSpeakerOutput: jest.fn(() => ({})),
+    },
+    SpeechSynthesizer: jest.fn(() => mockSynthesizer),
+    ResultReason: {
+      SynthesizingAudioCompleted: 'SynthesizingAudioCompleted',
+      Canceled: 'Canceled',
+    },
+    SpeechSynthesisOutputFormat: {
+      Audio16Khz32KBitRateMonoMp3: 'Audio16Khz32KBitRateMonoMp3',
+    },
+  };
+});
+
 describe('/api/tts/azure', () => {
   const originalEnv = process.env;
 
@@ -57,6 +93,41 @@ describe('/api/tts/azure', () => {
       const data = JSON.parse(res._getData());
       expect(data.error).toBe('Missing required fields');
       expect(data.details).toBe('text is required');
+    });
+
+    test('accepts valid request with minimal required fields', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world' },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    test('accepts request with all optional TTSRequestBody fields', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+
+      const requestBody: TTSRequestBody = {
+        text: 'Hello world',
+        voiceId: 'en-US-AriaNeural',
+        modelId: 'neural',
+        useContext: true
+      };
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: requestBody,
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
     });
   });
 
@@ -119,6 +190,85 @@ describe('/api/tts/azure', () => {
 
       expect(process.env.AZURE_API_KEY).toBeDefined();
       expect(process.env.AZURE_REGION).toBeDefined();
+    });
+  });
+
+  describe('Azure Speech SDK Integration', () => {
+    test('configures speech service with correct environment variables', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+
+      const { SpeechConfig } = require('microsoft-cognitiveservices-speech-sdk');
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world' },
+      });
+
+      await handler(req, res);
+
+      expect(SpeechConfig.fromSubscription).toHaveBeenCalledWith('test-key', 'test-region');
+    });
+
+    test('uses provided voiceId from request body', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world', voiceId: 'en-US-ChristopherNeural' },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    test('uses default voice when voiceId not provided', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world' },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    test('prioritizes environment AZURE_VOICE_NAME when available', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+      process.env.AZURE_VOICE_NAME = 'en-US-ChristopherNeural';
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world' },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    test('sets correct audio output format for web compatibility', async () => {
+      process.env.AZURE_API_KEY = 'test-key';
+      process.env.AZURE_REGION = 'test-region';
+
+      const { SpeechSynthesisOutputFormat } = require('microsoft-cognitiveservices-speech-sdk');
+
+      expect(SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3).toBeDefined();
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world' },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
     });
   });
 
@@ -197,6 +347,22 @@ describe('/api/tts/azure', () => {
   });
 
   describe('Environment and Configuration Management', () => {
+    test('follows environment-first configuration pattern', async () => {
+      // Test demonstrates that environment variables are checked first
+      process.env.AZURE_API_KEY = 'env-key';
+      process.env.AZURE_REGION = 'env-region';
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
+        method: 'POST',
+        body: { text: 'Hello world' },
+      });
+
+      await handler(req, res);
+
+      const { SpeechConfig } = require('microsoft-cognitiveservices-speech-sdk');
+      expect(SpeechConfig.fromSubscription).toHaveBeenCalledWith('env-key', 'env-region');
+    });
+
     test('validates environment variable consistency with implementation', async () => {
       // This test ensures that the environment variable names used in tests
       // match what the implementation actually uses

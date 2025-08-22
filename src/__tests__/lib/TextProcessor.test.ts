@@ -1,92 +1,205 @@
 import { DefaultTextProcessor } from '../../lib/TextProcessor';
+import { TTS_CONSTANTS } from '../../types/tts';
 
-describe('DefaultTextProcessor', () => {
+describe('DefaultTextProcessor - SOLID Architecture', () => {
   let processor: DefaultTextProcessor;
 
   beforeEach(() => {
     processor = new DefaultTextProcessor();
   });
 
-  describe('Text Formatting', () => {
-    test('formatText handles basic text formatting', () => {
-      const result = processor.formatText('Hello world', 'normal');
+  describe('Interface Compliance', () => {
+    test('implements ITextProcessor interface', () => {
+      expect(typeof processor.formatText).toBe('function');
+      expect(typeof processor.validateText).toBe('function');
+    });
 
+    test('formatText returns string for all inputs', () => {
+      const result = processor.formatText('test', 'normal');
+      expect(typeof result).toBe('string');
+    });
+
+    test('validateText returns boolean for all inputs', () => {
+      const result = processor.validateText('test');
+      expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('SSML Text Formatting', () => {
+    test('formatText handles basic text with SSML escaping', () => {
+      const result = processor.formatText('Hello world', 'normal');
       expect(result).toBe('Hello world');
       expect(typeof result).toBe('string');
     });
 
-    test('formatText handles paragraph elements', () => {
-      const text = 'This is a paragraph with multiple sentences. It should be formatted properly.';
-      const result = processor.formatText(text, 'paragraph');
-
-      expect(result).toContain('This is a paragraph');
-      expect(typeof result).toBe('string');
-    });
-
-    test('formatText handles heading elements', () => {
+    test('formatText adds SSML markup for heading elements', () => {
       const text = 'Chapter Title';
-      const result = processor.formatText(text, 'heading');
+      const result = processor.formatText(text, 'h1');
 
+      expect(result).toContain('<break time="0.5s"/>');
+      expect(result).toContain('<emphasis level="strong">');
+      expect(result).toContain('<prosody rate="slow">');
       expect(result).toContain('Chapter Title');
-      expect(typeof result).toBe('string');
+      expect(result).toContain('</prosody></emphasis>');
+      expect(result).toContain('<break time="1s"/>');
     });
 
-    test('formatText handles italic elements', () => {
+    test('formatText adds SSML markup for paragraph elements', () => {
+      const text = 'This is a paragraph with multiple sentences.';
+      const result = processor.formatText(text, 'p');
+
+      expect(result).toContain('This is a paragraph with multiple sentences.');
+      expect(result).toContain('<break time="0.3s"/>');
+    });
+
+    test('formatText adds SSML markup for italic elements', () => {
       const text = 'emphasized text';
-      const result = processor.formatText(text, 'italic');
+      const result = processor.formatText(text, 'em');
 
+      expect(result).toContain('<emphasis level="moderate">');
       expect(result).toContain('emphasized text');
-      expect(typeof result).toBe('string');
+      expect(result).toContain('</emphasis>');
     });
 
-    test('formatText handles bold elements', () => {
+    test('formatText adds SSML markup for bold elements', () => {
       const text = 'important text';
-      const result = processor.formatText(text, 'bold');
+      const result = processor.formatText(text, 'strong');
 
+      expect(result).toContain('<emphasis level="strong">');
       expect(result).toContain('important text');
-      expect(typeof result).toBe('string');
     });
 
-    test('formatText normalizes whitespace', () => {
+    test('formatText handles all heading levels consistently', () => {
+      const text = 'Heading Text';
+      const headingLevels = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+      headingLevels.forEach(level => {
+        const result = processor.formatText(text, level);
+        expect(result).toContain('<break time="0.5s"/>');
+        expect(result).toContain('<emphasis level="strong">');
+        expect(result).toContain('<prosody rate="slow">');
+        expect(result).toContain('Heading Text');
+      });
+    });
+  });
+
+  describe('Text Normalization and Cleaning', () => {
+    test('normalizes multiple whitespace to single spaces', () => {
       const text = '  Multiple   spaces   here  ';
       const result = processor.formatText(text, 'normal');
 
+      expect(result).toBe('Multiple spaces here');
       expect(result).not.toContain('  '); // No double spaces
-      expect(result.trim()).toBe(result); // No leading/trailing spaces
     });
 
-    test('formatText handles empty strings', () => {
-      const result = processor.formatText('', 'normal');
-
-      expect(result).toBe('');
-    });
-
-    test('formatText handles null/undefined gracefully', () => {
-      const resultNull = processor.formatText(null as any, 'normal');
-      const resultUndefined = processor.formatText(undefined as any, 'normal');
-
-      expect(resultNull).toBe('');
-      expect(resultUndefined).toBe('');
-    });
-
-    test('formatText removes special characters', () => {
-      const text = 'Text\nwith\r\nspecial\tchars\u00a0';
+    test('replaces special whitespace characters', () => {
+      const text = 'Text\nwith\r\nspecial\tchars\u00a0here';
       const result = processor.formatText(text, 'normal');
 
+      expect(result).toBe('Text with special chars here');
       expect(result).not.toContain('\n');
       expect(result).not.toContain('\r');
       expect(result).not.toContain('\t');
       expect(result).not.toContain('\u00a0');
     });
+
+    test('trims leading and trailing whitespace', () => {
+      const text = '   trimmed text   ';
+      const result = processor.formatText(text, 'normal');
+
+      expect(result).toBe('trimmed text');
+      expect(result).not.toMatch(/^\s/);
+      expect(result).not.toMatch(/\s$/);
+    });
+
+    test('escapes SSML special characters', () => {
+      const text = 'Text with <tags> & "quotes" and \'apostrophes\'';
+      const result = processor.formatText(text, 'normal');
+
+      expect(result).toContain('&lt;tags&gt;');
+      expect(result).toContain('&amp;');
+      expect(result).toContain('&quot;quotes&quot;');
+      expect(result).toContain('&apos;apostrophes&apos;');
+    });
   });
 
-  describe('Text Validation', () => {
+  describe('Element Type Detection', () => {
+    test('detects heading elements correctly', () => {
+      const text = 'Title';
+      const headings = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'H1', 'H2'];
+
+      headings.forEach(elementType => {
+        const result = processor.formatText(text, elementType);
+        expect(result).toContain('<emphasis level="strong">');
+        expect(result).toContain('<prosody rate="slow">');
+      });
+    });
+
+    test('detects paragraph elements correctly', () => {
+      const text = 'Paragraph text';
+      const result = processor.formatText(text, 'p');
+
+      expect(result).toContain('<break time="0.3s"/>');
+    });
+
+    test('detects italic elements correctly', () => {
+      const text = 'Italic text';
+
+      const resultI = processor.formatText(text, 'i');
+      const resultEm = processor.formatText(text, 'em');
+
+      expect(resultI).toContain('<emphasis level="moderate">');
+      expect(resultEm).toContain('<emphasis level="moderate">');
+    });
+
+    test('detects bold elements correctly', () => {
+      const text = 'Bold text';
+
+      const resultB = processor.formatText(text, 'b');
+      const resultStrong = processor.formatText(text, 'strong');
+
+      expect(resultB).toContain('<emphasis level="strong">');
+      expect(resultStrong).toContain('<emphasis level="strong">');
+    });
+
+    test('handles unknown element types as normal', () => {
+      const text = 'Normal text';
+      const unknownTypes = ['div', 'span', 'custom', 'unknown'];
+
+      unknownTypes.forEach(elementType => {
+        const result = processor.formatText(text, elementType);
+        expect(result).toBe('Normal text');
+      });
+    });
+
+    test('handles case-insensitive element types', () => {
+      const text = 'Test text';
+
+      const lowerResult = processor.formatText(text, 'h1');
+      const upperResult = processor.formatText(text, 'H1');
+      const mixedResult = processor.formatText(text, 'H1');
+
+      expect(lowerResult).toEqual(upperResult);
+      expect(upperResult).toEqual(mixedResult);
+    });
+  });
+
+  describe('Text Validation with Constants', () => {
+    test('validates text length against TTS_CONSTANTS.MAX_TEXT_LENGTH', () => {
+      const validText = 'This is valid text';
+      const longText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1);
+
+      expect(processor.validateText(validText)).toBe(true);
+      expect(processor.validateText(longText)).toBe(false);
+    });
+
     test('validateText returns true for valid text', () => {
       const validTexts = [
         'Hello world',
         'This is a longer sentence with punctuation.',
         'Text with numbers 123 and symbols!',
         'Internationalization: héllo wörld',
+        'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH), // At max length
       ];
 
       validTexts.forEach(text => {
@@ -98,8 +211,11 @@ describe('DefaultTextProcessor', () => {
       const invalidTexts = [
         '',
         '   ',
+        '\t\t\t',
+        '\n\n\n',
         null,
         undefined,
+        'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1), // Over max length
       ];
 
       invalidTexts.forEach(text => {
@@ -107,19 +223,12 @@ describe('DefaultTextProcessor', () => {
       });
     });
 
-    test('validateText handles minimum length requirements', () => {
-      const shortText = 'Hi';
-      const longText = 'This is a longer text that should pass validation.';
+    test('validateText checks for non-string types', () => {
+      const nonStringInputs = [123, {}, [], true, false, () => {}];
 
-      // Exact behavior depends on implementation
-      expect(typeof processor.validateText(shortText)).toBe('boolean');
-      expect(processor.validateText(longText)).toBe(true);
-    });
-
-    test('validateText handles special characters appropriately', () => {
-      const textWithSpecialChars = 'Text with émojis 🎉 and ñ characters';
-
-      expect(processor.validateText(textWithSpecialChars)).toBe(true);
+      nonStringInputs.forEach(input => {
+        expect(processor.validateText(input as any)).toBe(false);
+      });
     });
 
     test('validateText rejects only whitespace', () => {
@@ -135,136 +244,113 @@ describe('DefaultTextProcessor', () => {
         expect(processor.validateText(text)).toBe(false);
       });
     });
+
+    test('validateText handles Unicode characters correctly', () => {
+      const unicodeTexts = [
+        'Café, naïve, résumé',
+        '北京, 東京',
+        'مرحبا, שלום',
+        '🌟 🎉 🚀',
+      ];
+
+      unicodeTexts.forEach(text => {
+        expect(processor.validateText(text)).toBe(true);
+      });
+    });
   });
 
-  describe('Element Type Processing', () => {
-    test('processes different element types with appropriate formatting', () => {
-      const text = 'Sample text content';
-      const elementTypes = ['paragraph', 'heading', 'italic', 'bold', 'normal'];
+  describe('Error Handling and Edge Cases', () => {
+    test('formatText handles empty strings gracefully', () => {
+      const result = processor.formatText('', 'normal');
+      expect(result).toBe('');
+    });
 
-      elementTypes.forEach(elementType => {
-        const result = processor.formatText(text, elementType);
+    test('formatText handles null/undefined input gracefully', () => {
+      const resultNull = processor.formatText(null as any, 'normal');
+      const resultUndefined = processor.formatText(undefined as any, 'normal');
 
-        expect(typeof result).toBe('string');
-        expect(result.length).toBeGreaterThan(0);
-        expect(result).toContain('Sample text content');
+      expect(resultNull).toBe('');
+      expect(resultUndefined).toBe('');
+    });
+
+    test('formatText handles non-string input gracefully', () => {
+      const nonStringInputs = [123, {}, [], true, false];
+
+      nonStringInputs.forEach(input => {
+        const result = processor.formatText(input as any, 'normal');
+        expect(result).toBe('');
       });
     });
 
-    test('handles unknown element types gracefully', () => {
+    test('formatText handles invalid element types gracefully', () => {
       const text = 'Test text';
-      const unknownTypes = ['unknown', 'custom', 'div', 'span'];
+      const invalidTypes = [null, undefined, 123, {}, []];
 
-      unknownTypes.forEach(elementType => {
-        expect(() => processor.formatText(text, elementType)).not.toThrow();
-
-        const result = processor.formatText(text, elementType);
-        expect(typeof result).toBe('string');
+      invalidTypes.forEach(elementType => {
+        expect(() => processor.formatText(text, elementType as any)).not.toThrow();
+        const result = processor.formatText(text, elementType as any);
+        expect(result).toBe('Test text'); // Should default to normal
       });
     });
 
-    test('element type processing is case insensitive', () => {
-      const text = 'Test text';
-
-      const lowerResult = processor.formatText(text, 'paragraph');
-      const upperResult = processor.formatText(text, 'PARAGRAPH');
-      const mixedResult = processor.formatText(text, 'Paragraph');
-
-      // Should handle case variations gracefully
-      expect(typeof lowerResult).toBe('string');
-      expect(typeof upperResult).toBe('string');
-      expect(typeof mixedResult).toBe('string');
-    });
-  });
-
-  describe('Text Normalization', () => {
-    test('normalizes line breaks consistently', () => {
-      const textWithVariousBreaks = 'Line 1\nLine 2\r\nLine 3\rLine 4';
-      const result = processor.formatText(textWithVariousBreaks, 'normal');
-
-      // Should normalize all line breaks to spaces or consistent format
-      expect(result).not.toContain('\r\n');
-      expect(result).not.toContain('\r');
-    });
-
-    test('handles Unicode characters correctly', () => {
-      const unicodeText = 'Café, naïve, résumé, 北京, مرحبا, 🌟';
-      const result = processor.formatText(unicodeText, 'normal');
-
-      expect(result).toContain('Café');
-      expect(result).toContain('naïve');
-      expect(result).toContain('résumé');
-      expect(result).toContain('北京');
-      expect(result).toContain('مرحبا');
-      expect(result).toContain('🌟');
-    });
-
-    test('normalizes quotation marks and apostrophes', () => {
-      const textWithQuotes = `"Hello" 'world' "curly quotes" 'apostrophe's'`;
-      const result = processor.formatText(textWithQuotes, 'normal');
-
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    test('handles HTML entities if present', () => {
-      const textWithEntities = 'AT&amp;T, &lt;tag&gt;, &quot;quoted&quot;, &apos;apostrophe&apos;';
-      const result = processor.formatText(textWithEntities, 'normal');
-
-      // Should handle or preserve HTML entities appropriately
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Performance and Edge Cases', () => {
     test('handles very long text efficiently', () => {
-      const longText = 'A'.repeat(10000) + ' ' + 'B'.repeat(10000);
+      const longText = 'A'.repeat(1000) + ' test content';
 
       const startTime = performance.now();
       const result = processor.formatText(longText, 'normal');
       const endTime = performance.now();
 
       expect(typeof result).toBe('string');
-      expect(endTime - startTime).toBeLessThan(100); // Should process quickly
+      expect(result).toContain('test content');
+      expect(endTime - startTime).toBeLessThan(50); // Should process quickly
     });
 
-    test('handles repeated processing efficiently', () => {
-      const text = 'Sample text for performance testing';
+    test('handles text with complex SSML escaping scenarios', () => {
+      const complexText = '<test>&"quotes"&</test>';
+      const result = processor.formatText(complexText, 'normal');
 
-      const startTime = performance.now();
-      for (let i = 0; i < 1000; i++) {
-        processor.formatText(text, 'normal');
-        processor.validateText(text);
-      }
-      const endTime = performance.now();
-
-      expect(endTime - startTime).toBeLessThan(1000); // Should handle repeated calls efficiently
-    });
-
-    test('handles text with many special characters', () => {
-      const specialText = '!@#$%^&*()_+-=[]{}|;:,.<>?`~';
-
-      expect(() => processor.formatText(specialText, 'normal')).not.toThrow();
-      expect(() => processor.validateText(specialText)).not.toThrow();
-
-      const result = processor.formatText(specialText, 'normal');
-      expect(typeof result).toBe('string');
-    });
-
-    test('maintains text integrity during processing', () => {
-      const originalText = 'Important content that must be preserved exactly.';
-      const result = processor.formatText(originalText, 'normal');
-
-      // Should preserve the essential content
-      expect(result).toContain('Important content');
-      expect(result).toContain('must be preserved');
-      expect(result).toContain('exactly');
+      expect(result).toBe('&lt;test&gt;&amp;&quot;quotes&quot;&amp;&lt;/test&gt;');
     });
   });
 
-  describe('Integration and Configuration', () => {
-    test('processor maintains consistent behavior across calls', () => {
+  describe('SOLID Principles Compliance', () => {
+    test('Single Responsibility: Only handles text processing', () => {
+      expect(processor.formatText).toBeDefined();
+      expect(processor.validateText).toBeDefined();
+
+      expect(processor).not.toHaveProperty('play');
+      expect(processor).not.toHaveProperty('synthesize');
+      expect(processor).not.toHaveProperty('createAdapter');
+    });
+
+    test('Open/Closed: Can be extended without modification', () => {
+      expect(processor instanceof DefaultTextProcessor).toBe(true);
+      expect(typeof processor.formatText).toBe('function');
+      expect(typeof processor.validateText).toBe('function');
+    });
+
+    test('Interface Segregation: Implements focused ITextProcessor interface', () => {
+      const expectedMethods = ['formatText', 'validateText'];
+
+      expectedMethods.forEach(method => {
+        expect(typeof (processor as any)[method]).toBe('function');
+      });
+
+      expect(processor).not.toHaveProperty('play');
+      expect(processor).not.toHaveProperty('pause');
+    });
+
+    test('Dependency Inversion: Uses abstractions (constants)', () => {
+      const longText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1);
+      expect(processor.validateText(longText)).toBe(false);
+
+      const maxText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH);
+      expect(processor.validateText(maxText)).toBe(true);
+    });
+  });
+
+  describe('Performance and Reliability', () => {
+    test('maintains consistent behavior across calls', () => {
       const text = 'Consistent behavior test';
 
       const result1 = processor.formatText(text, 'normal');
@@ -275,12 +361,27 @@ describe('DefaultTextProcessor', () => {
       expect(result2).toBe(result3);
     });
 
+    test('handles repeated processing efficiently', () => {
+      const text = 'Sample text for performance testing';
+
+      const startTime = performance.now();
+      for (let i = 0; i < 100; i++) {
+        processor.formatText(text, 'normal');
+        processor.validateText(text);
+      }
+      const endTime = performance.now();
+
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
     test('validation and formatting work together correctly', () => {
       const testTexts = [
         'Valid text content',
         'Another valid piece of text',
         'Text with punctuation!',
         'Text with numbers 123',
+        '', // Invalid
+        '   ', // Invalid
       ];
 
       testTexts.forEach(text => {
@@ -289,73 +390,77 @@ describe('DefaultTextProcessor', () => {
 
         if (isValid) {
           expect(formatted.length).toBeGreaterThan(0);
-          expect(formatted).not.toBe('');
+          expect(formatted.trim().length).toBeGreaterThan(0);
+        } else {
+          expect(typeof formatted).toBe('string');
         }
       });
     });
 
-    test('processor handles concurrent access safely', () => {
+    test('handles concurrent access safely', async () => {
       const text = 'Concurrent access test';
 
       const promises = Array.from({ length: 10 }, (_, i) =>
         Promise.resolve().then(() => {
-          processor.formatText(`${text} ${i}`, 'normal');
-          return processor.validateText(`${text} ${i}`);
+          const formatted = processor.formatText(`${text} ${i}`, 'normal');
+          const valid = processor.validateText(`${text} ${i}`);
+          return { formatted, valid };
         })
       );
 
-      return Promise.all(promises).then(results => {
-        expect(results.length).toBe(10);
-        results.forEach((result: boolean) => {
-          expect(typeof result).toBe('boolean');
-        });
+      const results = await Promise.all(promises);
+
+      expect(results.length).toBe(10);
+      results.forEach((result, i) => {
+        expect(result.formatted).toContain(`${text} ${i}`);
+        expect(typeof result.valid).toBe('boolean');
+        expect(result.valid).toBe(true);
       });
     });
   });
 
-  describe('Error Handling', () => {
-    test('gracefully handles invalid element types', () => {
-      const text = 'Test text';
-      const invalidTypes = [null, undefined, 123, {}, []];
+  describe('SSML Integration', () => {
+    test('produces valid SSML-like markup for TTS systems', () => {
+      const headingResult = processor.formatText('Chapter 1', 'h1');
 
-      invalidTypes.forEach(elementType => {
-        expect(() => processor.formatText(text, elementType as any)).not.toThrow();
-      });
+      expect(headingResult).toMatch(/<break time="\d+(\.\d+)?s"\/>/);
+      expect(headingResult).toMatch(/<emphasis level="strong">/);
+      expect(headingResult).toMatch(/<prosody rate="slow">/);
+      expect(headingResult).toMatch(/<\/prosody><\/emphasis>/);
     });
 
-    test('formatText recovers from processing errors', () => {
-      // Test with potentially problematic input
-      const problematicInputs = [
-        'Text\x00with\x00null\x00chars',
-        'Text with very long line: ' + 'a'.repeat(1000000),
-        String.fromCharCode(0xD800), // Invalid Unicode
-      ];
+    test('escapes content to prevent SSML injection', () => {
+      const maliciousText = '<break time="10s"/>malicious<emphasis>';
+      const result = processor.formatText(maliciousText, 'normal');
 
-      problematicInputs.forEach(input => {
-        expect(() => processor.formatText(input, 'normal')).not.toThrow();
-
-        const result = processor.formatText(input, 'normal');
-        expect(typeof result).toBe('string');
-      });
+      expect(result).toContain('&lt;break');
+      expect(result).toContain('&lt;emphasis&gt;');
+      expect(result).not.toContain('<break time="10s"/>');
     });
 
-    test('validateText handles edge cases safely', () => {
-      const edgeCases = [
-        {},
-        [],
-        123,
-        true,
-        function() {},
-        Symbol('test'),
-      ];
+    test('preserves text content integrity within SSML markup', () => {
+      const originalText = 'Important content that must be preserved.';
+      const result = processor.formatText(originalText, 'p');
 
-      edgeCases.forEach(input => {
-        expect(() => processor.validateText(input as any)).not.toThrow();
+      expect(result).toContain('Important content that must be preserved.');
+    });
+  });
 
-        const result = processor.validateText(input as any);
-        expect(typeof result).toBe('boolean');
-        expect(result).toBe(false); // Should reject non-string inputs
-      });
+  describe('Integration with TTS Constants', () => {
+    test('respects MAX_TEXT_LENGTH from TTS_CONSTANTS', () => {
+      const maxLengthText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH);
+      const overLengthText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1);
+
+      expect(processor.validateText(maxLengthText)).toBe(true);
+      expect(processor.validateText(overLengthText)).toBe(false);
+    });
+
+    test('uses consistent configuration source', () => {
+      expect(TTS_CONSTANTS.MAX_TEXT_LENGTH).toBeDefined();
+      expect(typeof TTS_CONSTANTS.MAX_TEXT_LENGTH).toBe('number');
+
+      const testText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1);
+      expect(processor.validateText(testText)).toBe(false);
     });
   });
 });

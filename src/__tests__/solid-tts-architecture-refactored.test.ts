@@ -4,9 +4,6 @@ import { EpubTextExtractionService } from '../lib/services/TextExtractionService
 import { KeyboardHandler } from '../lib/handlers/KeyboardHandler';
 import { TtsStateManager } from '../lib/managers/TtsStateManager';
 
-// Note: These tests are simplified after the SOLID refactoring
-// Full test suite should be implemented to test the new architecture
-
 describe('SOLID TTS Architecture - Basic Tests', () => {
   test('State Manager manages state correctly', () => {
     const stateManager = new TtsStateManager();

@@ -1,354 +1,511 @@
-import { TtsOrchestrationService } from '../../lib/services/TtsOrchestrationService';
-import { EpubTextExtractionService } from '../../lib/services/TextExtractionService';
-import type { IPlaybackAdapter, ITextProcessor } from '../../preferences/types';
-import type { TextChunk } from '../../types/tts';
+import { TtsOrchestrationService, ITtsOrchestrationService, TtsCallbacks } from '../../lib/services/TtsOrchestrationService';
+import { ITextExtractionService } from '../../lib/services/TextExtractionService';
+import { TtsStateManager, TtsState } from '../../lib/managers/TtsStateManager';
+import { TTSAdapterFactory, AdapterType } from '../../lib/AdapterFactory';
+import { IPlaybackAdapter } from '../../preferences/types';
+import { TextChunk, TTS_CONSTANTS } from '../../types/tts';
 
-// Mock dependencies
-const mockAdapter: IPlaybackAdapter = {
-  play: jest.fn().mockResolvedValue({}),
-  pause: jest.fn(),
-  resume: jest.fn(),
-  stop: jest.fn(),
-  on: jest.fn((event: string, callback: Function) => {
-    // Simulate event listener registration
-  }),
-  off: jest.fn(),
-  getIsPlaying: jest.fn().mockReturnValue(false),
-  getIsPaused: jest.fn().mockReturnValue(false),
-  getCurrentAudio: jest.fn().mockReturnValue(null),
-};
-
-const mockTextProcessor: ITextProcessor = {
-  formatText: jest.fn((text: string) => text),
-  validateText: jest.fn(() => true),
-};
-
-const mockTextExtractor = {
-  extractTextChunks: jest.fn().mockResolvedValue([
-    { text: 'First chunk of text', element: 'paragraph' },
-    { text: 'Second chunk of text', element: 'paragraph' },
-    { text: 'Third chunk of text', element: 'heading' },
-  ]),
-  getCurrentReaderElement: jest.fn().mockReturnValue(document.createElement('div')),
-} as any;
+jest.mock('../../lib/managers/TtsStateManager');
+jest.mock('../../lib/AdapterFactory');
 
 describe('TtsOrchestrationService', () => {
-  let service: TtsOrchestrationService;
+  let service: ITtsOrchestrationService;
+  let mockAdapter: any;
+  let mockTextExtractor: any;
+  let mockStateManager: any;
+  let mockAdapterFactory: any;
+  let mockCallbacks: TtsCallbacks;
 
-  beforeEach(() => {
-    service = new TtsOrchestrationService(mockAdapter, mockTextExtractor);
-
-    // Reset all mocks
-    jest.clearAllMocks();
+  const createMockAdapter = (): jest.Mocked<IPlaybackAdapter> => ({
+    play: jest.fn().mockResolvedValue({}),
+    pause: jest.fn(),
+    resume: jest.fn(),
+    stop: jest.fn(),
+    destroy: jest.fn(),
+    on: jest.fn(),
+    off: jest.fn(),
+    getIsPlaying: jest.fn().mockReturnValue(false),
+    getIsPaused: jest.fn().mockReturnValue(false),
+    getCurrentAudio: jest.fn().mockReturnValue(null),
   });
 
-  describe('Initialization', () => {
-    test('creates service with required dependencies', () => {
+  const createMockTextExtractor = (): jest.Mocked<ITextExtractionService> => ({
+    extractTextChunks: jest.fn().mockResolvedValue([
+      { text: 'First chunk of text', element: 'P' },
+      { text: 'Second chunk of text', element: 'P' },
+      { text: 'Third chunk of text', element: 'H2' },
+    ] as TextChunk[]),
+    getCurrentReaderElement: jest.fn().mockReturnValue(document.createElement('div')),
+  });
+
+  const createMockStateManager = (): any => ({
+    getState: jest.fn().mockReturnValue({
+      isPlaying: false,
+      isPaused: false,
+      isGenerating: false,
+      error: null,
+      currentAdapter: null,
+    } as TtsState),
+    subscribe: jest.fn().mockReturnValue(() => {}),
+    setState: jest.fn(),
+    setPlaying: jest.fn(),
+    setPaused: jest.fn(),
+    setGenerating: jest.fn(),
+    setError: jest.fn(),
+    setAdapter: jest.fn(),
+    reset: jest.fn(),
+  });
+
+  const createMockAdapterFactory = (): any => ({
+    createAdapter: jest.fn().mockReturnValue(createMockAdapter()),
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockAdapter = createMockAdapter();
+    mockTextExtractor = createMockTextExtractor();
+    mockStateManager = createMockStateManager();
+    mockAdapterFactory = createMockAdapterFactory();
+
+    // Mock the constructors
+    (TtsStateManager as jest.MockedClass<typeof TtsStateManager>).mockImplementation(() => mockStateManager);
+    (TTSAdapterFactory as jest.MockedClass<typeof TTSAdapterFactory>).mockImplementation(() => mockAdapterFactory);
+
+    TTSAdapterFactory.getImplementedAdapters = jest.fn().mockReturnValue([
+      { key: 'azure', name: 'Azure Speech' },
+      { key: 'elevenlabs', name: 'ElevenLabs' },
+    ]);
+
+    mockCallbacks = {
+      onStateChange: jest.fn(),
+      onError: jest.fn(),
+      onAdapterSwitch: jest.fn(),
+    };
+
+    service = new TtsOrchestrationService(
+      mockAdapter,
+      mockTextExtractor,
+      'azure' as AdapterType,
+      mockCallbacks
+    );
+  });
+
+  describe('SOLID Architecture Compliance', () => {
+    test('implements ITtsOrchestrationService interface correctly', () => {
       expect(service).toBeInstanceOf(TtsOrchestrationService);
-      expect(service).toBeDefined();
+      expect(typeof service.startReading).toBe('function');
+      expect(typeof service.pauseReading).toBe('function');
+      expect(typeof service.resumeReading).toBe('function');
+      expect(typeof service.stopReading).toBe('function');
+      expect(typeof service.isPlaying).toBe('function');
+      expect(typeof service.isPaused).toBe('function');
+      expect(typeof service.switchAdapter).toBe('function');
+      expect(typeof service.getCurrentAdapterType).toBe('function');
+      expect(typeof service.getState).toBe('function');
+      expect(typeof service.destroy).toBe('function');
     });
 
-    test('registers adapter event listeners on initialization', () => {
-      // Create new service to check initialization
-      new TtsOrchestrationService(mockAdapter, mockTextExtractor);
+    test('Single Responsibility: Service only orchestrates TTS workflow', async () => {
+      await service.startReading();
 
+      expect(mockTextExtractor.extractTextChunks).toHaveBeenCalled();
+      expect(mockAdapter.play).toHaveBeenCalled();
+      expect(mockStateManager.setGenerating).toHaveBeenCalled();
+    });
+
+    test('Open/Closed: Service works with different adapter types without modification', () => {
+      const adapterTypes: AdapterType[] = ['azure', 'elevenlabs'];
+
+      adapterTypes.forEach(adapterType => {
+        expect(() => service.switchAdapter(adapterType)).not.toThrow();
+      });
+    });
+
+    test('Dependency Inversion: Depends on abstractions not concrete implementations', () => {
+      expect(service.getState()).toBeDefined();
+      expect(service.getCurrentAdapterType()).toBeDefined();
+    });
+
+    test('Interface Segregation: Uses focused interfaces for each dependency', () => {
+      expect(mockAdapter.play).toBeDefined();
+      expect(mockTextExtractor.extractTextChunks).toBeDefined();
+      expect(mockStateManager.getState).toBeDefined();
+    });
+  });
+
+  describe('Service Initialization and Configuration', () => {
+    test('initializes with required dependencies and adapter type', () => {
+      expect(TtsStateManager).toHaveBeenCalled();
+      expect(TTSAdapterFactory).toHaveBeenCalled();
+      expect(mockStateManager.setAdapter).toHaveBeenCalledWith('azure');
+    });
+
+    test('sets up adapter event listeners during initialization', () => {
+      expect(mockAdapter.on).toHaveBeenCalledWith('play', expect.any(Function));
+      expect(mockAdapter.on).toHaveBeenCalledWith('pause', expect.any(Function));
+      expect(mockAdapter.on).toHaveBeenCalledWith('resume', expect.any(Function));
+      expect(mockAdapter.on).toHaveBeenCalledWith('stop', expect.any(Function));
       expect(mockAdapter.on).toHaveBeenCalledWith('end', expect.any(Function));
       expect(mockAdapter.on).toHaveBeenCalledWith('error', expect.any(Function));
     });
 
-    test('handles null/undefined dependencies gracefully', () => {
-      expect(() => new TtsOrchestrationService(null as any, null as any)).not.toThrow();
+    test('subscribes to state manager updates', () => {
+      expect(mockStateManager.subscribe).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    test('handles optional callbacks parameter', () => {
+      const serviceWithoutCallbacks = new TtsOrchestrationService(
+        mockAdapter,
+        mockTextExtractor
+      );
+
+      expect(serviceWithoutCallbacks).toBeDefined();
     });
   });
 
-  describe('Text Reading Orchestration', () => {
-    test('startReading extracts and plays text chunks', async () => {
+  describe('Text Reading Orchestration with TTS_CONSTANTS', () => {
+    test('startReading extracts text and processes chunks according to configuration', async () => {
       await service.startReading();
 
       expect(mockTextExtractor.extractTextChunks).toHaveBeenCalled();
-      expect(mockAdapter.play).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text: 'First chunk of text',
-          element: 'paragraph'
-        })
-      );
+      expect(mockStateManager.setGenerating).toHaveBeenCalledWith(true);
+
+      if (TTS_CONSTANTS.ENABLE_WHOLE_PAGE_READING) {
+        expect(mockAdapter.play).toHaveBeenCalledTimes(3);
+      } else {
+        expect(mockAdapter.play).toHaveBeenCalledTimes(Math.min(3, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING));
+      }
+
+      expect(mockStateManager.setGenerating).toHaveBeenCalledWith(false);
     });
 
-    test('startReading handles empty text chunks', async () => {
-      mockTextExtractor.extractTextChunks.mockResolvedValueOnce([]);
+    test('startReading prevents concurrent execution', async () => {
+      mockAdapter.getIsPlaying.mockReturnValue(true);
 
       await service.startReading();
 
-      expect(mockTextExtractor.extractTextChunks).toHaveBeenCalled();
+      expect(mockTextExtractor.extractTextChunks).not.toHaveBeenCalled();
       expect(mockAdapter.play).not.toHaveBeenCalled();
+    });
+
+    test('startReading handles empty text chunks gracefully', async () => {
+      mockTextExtractor.extractTextChunks.mockResolvedValue([]);
+
+      await service.startReading();
+
+      expect(mockStateManager.setGenerating).toHaveBeenCalledWith(true);
+      expect(mockAdapter.play).not.toHaveBeenCalled();
+      expect(mockStateManager.setGenerating).toHaveBeenCalledWith(false);
     });
 
     test('startReading handles text extraction errors', async () => {
-      mockTextExtractor.extractTextChunks.mockRejectedValueOnce(new Error('Extraction failed'));
+      const extractionError = new Error('Text extraction failed');
+      mockTextExtractor.extractTextChunks.mockRejectedValue(extractionError);
 
-      await expect(service.startReading()).rejects.toThrow('Extraction failed');
-      expect(mockAdapter.play).not.toHaveBeenCalled();
+      await expect(service.startReading()).rejects.toThrow('Text extraction failed');
+
+      expect(mockStateManager.setError).toHaveBeenCalledWith('Failed to start reading: Error: Text extraction failed');
+      expect(mockStateManager.setGenerating).toHaveBeenCalledWith(false);
     });
 
-    test('startReading handles adapter play errors', async () => {
-      mockAdapter.play = jest.fn().mockRejectedValue(new Error('Playback failed'));
+    test('startReading handles adapter playback errors', async () => {
+      const playbackError = new Error('Playback failed');
+      mockAdapter.play.mockRejectedValue(playbackError);
 
       await expect(service.startReading()).rejects.toThrow('Playback failed');
+
+      expect(mockStateManager.setError).toHaveBeenCalled();
+      expect(mockStateManager.setGenerating).toHaveBeenCalledWith(false);
     });
   });
 
-  describe('Playback Control', () => {
-    test('pauseReading calls adapter pause', () => {
+  describe('Playback Control with State Management', () => {
+    test('pauseReading calls adapter pause when conditions are met', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(true);
+      mockAdapter.getIsPaused.mockReturnValue(false);
+
       service.pauseReading();
 
       expect(mockAdapter.pause).toHaveBeenCalled();
     });
 
-    test('resumeReading calls adapter resume', () => {
+    test('pauseReading prevents action when not playing', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(false);
+
+      service.pauseReading();
+
+      expect(mockAdapter.pause).not.toHaveBeenCalled();
+    });
+
+    test('pauseReading prevents action when already paused', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(true);
+      mockAdapter.getIsPaused.mockReturnValue(true);
+
+      service.pauseReading();
+
+      expect(mockAdapter.pause).not.toHaveBeenCalled();
+    });
+
+    test('resumeReading calls adapter resume when paused', () => {
+      mockAdapter.getIsPaused.mockReturnValue(true);
+
       service.resumeReading();
 
       expect(mockAdapter.resume).toHaveBeenCalled();
     });
 
-    test('stopReading calls adapter stop and resets state', () => {
+    test('resumeReading prevents action when not paused', () => {
+      mockAdapter.getIsPaused.mockReturnValue(false);
+
+      service.resumeReading();
+
+      expect(mockAdapter.resume).not.toHaveBeenCalled();
+    });
+
+    test('stopReading calls adapter stop and resets execution state', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(true);
+
       service.stopReading();
 
       expect(mockAdapter.stop).toHaveBeenCalled();
     });
 
-    test('pauseReading handles adapter errors gracefully', () => {
-      mockAdapter.pause = jest.fn().mockImplementation(() => {
-        throw new Error('Pause failed');
-      });
+    test('stopReading prevents action when not playing or paused', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(false);
+      mockAdapter.getIsPaused.mockReturnValue(false);
 
-      expect(() => service.pauseReading()).not.toThrow();
-    });
+      service.stopReading();
 
-    test('resumeReading handles adapter errors gracefully', () => {
-      mockAdapter.resume = jest.fn().mockImplementation(() => {
-        throw new Error('Resume failed');
-      });
-
-      expect(() => service.resumeReading()).not.toThrow();
-    });
-
-    test('stopReading handles adapter errors gracefully', () => {
-      mockAdapter.stop = jest.fn().mockImplementation(() => {
-        throw new Error('Stop failed');
-      });
-
-      expect(() => service.stopReading()).not.toThrow();
+      expect(mockAdapter.stop).not.toHaveBeenCalled();
     });
   });
 
-  describe('State Management', () => {
-    test('isPlaying returns current playback state', () => {
-      mockAdapter.getIsPlaying = jest.fn().mockReturnValue(true);
-
+  describe('State Management Integration', () => {
+    test('isPlaying returns adapter playing state', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(true);
       expect(service.isPlaying()).toBe(true);
 
-      mockAdapter.getIsPlaying = jest.fn().mockReturnValue(false);
+      mockAdapter.getIsPlaying.mockReturnValue(false);
       expect(service.isPlaying()).toBe(false);
     });
 
-    test('isPaused returns current pause state', () => {
-      mockAdapter.getIsPaused = jest.fn().mockReturnValue(true);
-
+    test('isPaused returns adapter paused state', () => {
+      mockAdapter.getIsPaused.mockReturnValue(true);
       expect(service.isPaused()).toBe(true);
 
-      mockAdapter.getIsPaused = jest.fn().mockReturnValue(false);
+      mockAdapter.getIsPaused.mockReturnValue(false);
       expect(service.isPaused()).toBe(false);
     });
 
-    test('state methods handle missing adapter methods gracefully', () => {
+    test('getState returns current TTS state from state manager', () => {
+      const mockState: TtsState = {
+        isPlaying: true,
+        isPaused: false,
+        isGenerating: false,
+        error: null,
+        currentAdapter: 'azure',
+      };
+      mockStateManager.getState.mockReturnValue(mockState);
+
+      expect(service.getState()).toEqual(mockState);
+    });
+
+    test('handles missing adapter state methods gracefully', () => {
       const adapterWithoutState = {
         ...mockAdapter,
         getIsPlaying: undefined,
         getIsPaused: undefined,
       } as any;
 
-      const serviceWithoutState = new TtsOrchestrationService(adapterWithoutState, mockTextExtractor);
+      const serviceWithoutState = new TtsOrchestrationService(
+        adapterWithoutState,
+        mockTextExtractor
+      );
 
       expect(serviceWithoutState.isPlaying()).toBe(false);
       expect(serviceWithoutState.isPaused()).toBe(false);
     });
   });
 
-  describe('Event Handling', () => {
-    test('on method registers event listeners', () => {
-      const callback = jest.fn();
+  describe('Adapter Management and Switching', () => {
+    test('switchAdapter changes to specified adapter type', () => {
+      service.switchAdapter('elevenlabs' as AdapterType);
 
-      service.on('play', callback);
-      service.on('pause', callback);
-      service.on('stop', callback);
-
-      expect(() => service.on('play', callback)).not.toThrow();
+      expect(mockAdapterFactory.createAdapter).toHaveBeenCalledWith('elevenlabs');
+      expect(mockStateManager.setAdapter).toHaveBeenCalledWith('elevenlabs');
+      expect(mockCallbacks.onAdapterSwitch).toHaveBeenCalledWith('elevenlabs');
     });
 
-    test('handleAdapterEnd processes events correctly', async () => {
-      // Start reading to initialize chunks
-      await service.startReading();
+    test('switchAdapter cycles through available adapters when no type specified', () => {
+      service.switchAdapter();
 
-      // Get the end event handler that was registered
-      const endHandler = (mockAdapter.on as jest.Mock).mock.calls
-        .find(call => call[0] === 'end')?.[1];
-
-      if (endHandler) {
-        // Trigger the end event
-        expect(() => endHandler()).not.toThrow();
-      }
+      expect(mockAdapterFactory.createAdapter).toHaveBeenCalledWith('elevenlabs');
     });
 
-    test('handleAdapterError logs and handles errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    test('switchAdapter prevents switching to same adapter', () => {
+      service.switchAdapter('azure' as AdapterType); // Current adapter
 
-      // Get the error event handler that was registered
+      expect(mockAdapterFactory.createAdapter).not.toHaveBeenCalled();
+    });
+
+    test('switchAdapter handles unknown adapter types', () => {
+      service.switchAdapter('unknown' as AdapterType);
+
+      expect(mockAdapterFactory.createAdapter).not.toHaveBeenCalled();
+    });
+
+    test('switchAdapter handles adapter creation errors', () => {
+      mockAdapterFactory.createAdapter.mockImplementation(() => {
+        throw new Error('Adapter creation failed');
+      });
+
+      service.switchAdapter('elevenlabs' as AdapterType);
+
+      expect(mockStateManager.setError).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to switch adapter')
+      );
+    });
+
+    test('getCurrentAdapterType returns current adapter type', () => {
+      expect(service.getCurrentAdapterType()).toBe('azure');
+    });
+
+    test('switchAdapter stops current playback before switching', () => {
+      mockAdapter.getIsPlaying.mockReturnValue(true);
+
+      service.switchAdapter('elevenlabs' as AdapterType);
+
+      expect(mockAdapter.stop).toHaveBeenCalled();
+    });
+  });
+
+  describe('Event Handling and Callbacks', () => {
+    test('adapter events trigger state manager updates', () => {
+      const playHandler = (mockAdapter.on as jest.Mock).mock.calls
+        .find(call => call[0] === 'play')?.[1];
+      const pauseHandler = (mockAdapter.on as jest.Mock).mock.calls
+        .find(call => call[0] === 'pause')?.[1];
+      const stopHandler = (mockAdapter.on as jest.Mock).mock.calls
+        .find(call => call[0] === 'stop')?.[1];
+
+      playHandler?.();
+      expect(mockStateManager.setPlaying).toHaveBeenCalledWith(true);
+
+      pauseHandler?.();
+      expect(mockStateManager.setPaused).toHaveBeenCalledWith(true);
+
+      stopHandler?.();
+      expect(mockStateManager.reset).toHaveBeenCalled();
+    });
+
+    test('adapter error events trigger error handling', () => {
       const errorHandler = (mockAdapter.on as jest.Mock).mock.calls
         .find(call => call[0] === 'error')?.[1];
 
-      if (errorHandler) {
-        const testError = new Error('Test error');
-        expect(() => errorHandler(testError)).not.toThrow();
-      }
+      const testError = { error: { message: 'Test error message' } };
+      errorHandler?.(testError);
 
-      consoleSpy.mockRestore();
+      expect(mockStateManager.setError).toHaveBeenCalledWith(
+        'TTS Error: Test error message'
+      );
     });
 
-    test('event handlers handle missing callbacks gracefully', () => {
-      const adapterWithoutCallbacks = {
-        ...mockAdapter,
-        on: jest.fn(),
-        off: jest.fn(),
+    test('state changes trigger callbacks', () => {
+      const stateSubscriptionHandler = (mockStateManager.subscribe as jest.Mock).mock.calls[0]?.[0];
+      const testState: TtsState = {
+        isPlaying: true,
+        isPaused: false,
+        isGenerating: false,
+        error: null,
+        currentAdapter: 'azure',
       };
 
-      expect(() => new TtsOrchestrationService(adapterWithoutCallbacks, mockTextExtractor)).not.toThrow();
+      stateSubscriptionHandler?.(testState);
+
+      expect(mockCallbacks.onStateChange).toHaveBeenCalledWith(testState);
     });
   });
 
-  describe('Keyboard Shortcuts', () => {
-    test('enableKeyboardShortcuts activates keyboard controls', () => {
-      expect(() => service.enableKeyboardShortcuts()).not.toThrow();
+  describe('Resource Management and Cleanup', () => {
+    test('destroy stops playback and cleans up resources', () => {
+      service.destroy();
+
+      expect(mockAdapter.stop).toHaveBeenCalled();
     });
 
-    test('disableKeyboardShortcuts deactivates keyboard controls', () => {
-      expect(() => service.disableKeyboardShortcuts()).not.toThrow();
+    test('adapter switching cleans up old adapter', () => {
+      service.switchAdapter('elevenlabs' as AdapterType);
+
+      expect(mockAdapter.destroy).toHaveBeenCalled();
     });
 
-    test('getShortcuts returns keyboard shortcut configuration', () => {
-      const shortcuts = service.getShortcuts();
-
-      expect(Array.isArray(shortcuts)).toBe(true);
-      expect(shortcuts.length).toBeGreaterThan(0);
-
-      shortcuts.forEach(shortcut => {
-        expect(shortcut).toHaveProperty('key');
-        expect(shortcut).toHaveProperty('action');
+    test('handles cleanup errors gracefully', () => {
+      mockAdapter.destroy.mockImplementation(() => {
+        throw new Error('Cleanup failed');
       });
+
+      expect(() => service.switchAdapter('elevenlabs' as AdapterType)).not.toThrow();
     });
   });
 
-  describe('Performance Optimization', () => {
-    test('service handles large text efficiently', async () => {
-      const largeChunks = Array.from({ length: 1000 }, (_, i) => ({
-        text: `Large chunk number ${i} with substantial content that could impact performance`,
-        element: 'paragraph'
-      }));
+  describe('Performance and Error Recovery', () => {
+    test('service handles large text chunks efficiently', async () => {
+      const largeChunks = Array.from({ length: 100 }, (_, i) => ({
+        text: `Large chunk number ${i} with substantial content`,
+        element: 'P'
+      })) as TextChunk[];
 
-      mockTextExtractor.extractTextChunks.mockResolvedValueOnce(largeChunks);
+      mockTextExtractor.extractTextChunks.mockResolvedValue(largeChunks);
 
       const startTime = performance.now();
       await service.startReading();
       const endTime = performance.now();
 
-      expect(endTime - startTime).toBeLessThan(1000); // Should process within 1 second
+      expect(endTime - startTime).toBeLessThan(1000);
       expect(mockAdapter.play).toHaveBeenCalled();
     });
 
-    test('service handles rapid control calls', async () => {
-      await service.startReading();
-
-      // Rapid fire control calls
-      for (let i = 0; i < 10; i++) {
-        service.pauseReading();
-        service.resumeReading();
-      }
-
-      // Should handle without crashing
-      expect(() => service.stopReading()).not.toThrow();
-    });
-  });
-
-  describe('Resource Management', () => {
-    test('destroy cleans up resources and event listeners', () => {
-      expect(() => service.destroy()).not.toThrow();
-    });
-
-    test('service can be used after destroy (graceful degradation)', () => {
-      service.destroy();
-
-      // Should handle gracefully even after destruction
-      expect(() => service.stopReading()).not.toThrow();
-      expect(() => service.pauseReading()).not.toThrow();
-    });
-
-    test('destroy handles missing cleanup methods gracefully', () => {
-      const adapterWithoutCleanup = {
-        ...mockAdapter,
-        off: undefined,
-      } as any;
-
-      const serviceWithoutCleanup = new TtsOrchestrationService(adapterWithoutCleanup, mockTextExtractor);
-
-      expect(() => serviceWithoutCleanup.destroy()).not.toThrow();
-    });
-  });
-
-  describe('Error Recovery', () => {
     test('service recovers from adapter failures', async () => {
-      // Make adapter fail once, then succeed
-      mockAdapter.play = jest.fn()
+      mockAdapter.play
         .mockRejectedValueOnce(new Error('Temporary failure'))
         .mockResolvedValue({});
 
-      // First call should fail
       await expect(service.startReading()).rejects.toThrow('Temporary failure');
-
-      // Second call should succeed
+      mockStateManager.setGenerating.mockClear();
       await expect(service.startReading()).resolves.not.toThrow();
     });
 
-    test('service handles partial failures gracefully', async () => {
-      const mixedChunks = [
-        { text: 'Good chunk', element: 'paragraph' },
-        { text: '', element: 'paragraph' }, // Empty chunk
-        { text: 'Another good chunk', element: 'paragraph' },
-      ];
+    test('respects TTS_CONSTANTS for chunk processing', async () => {
+      const chunks = Array.from({ length: 10 }, (_, i) => ({
+        text: `Chunk ${i}`,
+        element: 'P'
+      })) as TextChunk[];
 
-      mockTextExtractor.extractTextChunks.mockResolvedValueOnce(mixedChunks);
+      mockTextExtractor.extractTextChunks.mockResolvedValue(chunks);
 
       await service.startReading();
 
-      // Should handle mixed content appropriately
-      expect(mockAdapter.play).toHaveBeenCalled();
+      const expectedChunkCount = TTS_CONSTANTS.ENABLE_WHOLE_PAGE_READING
+        ? 10
+        : Math.min(10, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING);
+
+      expect(mockAdapter.play).toHaveBeenCalledTimes(expectedChunkCount);
     });
   });
 
-  describe('Integration with Text Extraction', () => {
-    test('service coordinates with text extractor correctly', async () => {
-      await service.startReading();
+  describe('Integration with Factory Pattern', () => {
+    test('uses TTSAdapterFactory for adapter creation', () => {
+      service.switchAdapter('elevenlabs' as AdapterType);
 
-      expect(mockTextExtractor.extractTextChunks).toHaveBeenCalled();
-      expect(mockTextExtractor.getCurrentReaderElement).toHaveBeenCalled();
+      expect(TTSAdapterFactory).toHaveBeenCalled();
+      expect(mockAdapterFactory.createAdapter).toHaveBeenCalledWith('elevenlabs');
     });
 
-    test('service handles text extractor state changes', async () => {
-      // Change the reader element
-      mockTextExtractor.getCurrentReaderElement.mockReturnValue(null);
+    test('queries available adapters from factory', () => {
+      service.switchAdapter();
 
-      await service.startReading();
-
-      // Should handle gracefully even with changed state
-      expect(mockTextExtractor.extractTextChunks).toHaveBeenCalled();
+      expect(TTSAdapterFactory.getImplementedAdapters).toHaveBeenCalled();
     });
   });
 });

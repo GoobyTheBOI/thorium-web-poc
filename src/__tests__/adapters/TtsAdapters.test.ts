@@ -1,6 +1,7 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
-import type { ITextProcessor, IAdapterConfig } from '../../preferences/types';
+import { DefaultTextProcessor } from '../../lib/TextProcessor';
+import type { ITextProcessor } from '../../preferences/types';
 import type { TextChunk } from '../../types/tts';
 
 // Mock ElevenLabs SDK
@@ -14,7 +15,6 @@ jest.mock('@elevenlabs/elevenlabs-js', () => ({
   })),
 }));
 
-// Mock Azure Speech SDK
 jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
   SpeechConfig: {
     fromSubscription: jest.fn().mockReturnValue({
@@ -36,7 +36,6 @@ jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
   },
 }));
 
-// Mock Web Audio API
 Object.defineProperty(window, 'AudioContext', {
   writable: true,
   value: jest.fn().mockImplementation(() => ({
@@ -63,39 +62,30 @@ Object.defineProperty(window, 'AudioContext', {
   })),
 });
 
-describe('TTS Adapters', () => {
-  let mockTextProcessor: ITextProcessor;
-  let mockConfig: IAdapterConfig;
+describe('TTS Adapters - SOLID Architecture', () => {
+  let textProcessor: ITextProcessor;
 
   beforeEach(() => {
-    mockTextProcessor = {
-      formatText: jest.fn((text: string) => text),
-      validateText: jest.fn(() => true),
-    };
-
-    mockConfig = {
-      apiKey: 'test-api-key',
-      voiceId: 'test-voice-id',
-      modelId: 'test-model',
-    };
+    textProcessor = new DefaultTextProcessor();
   });
 
   describe('ElevenLabsAdapter', () => {
     let adapter: ElevenLabsAdapter;
 
     beforeEach(() => {
-      adapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
+      adapter = new ElevenLabsAdapter(textProcessor);
     });
 
-    test('should create adapter instance', () => {
+    test('should create adapter instance with correct dependencies', () => {
       expect(adapter).toBeInstanceOf(ElevenLabsAdapter);
     });
 
-    test('should have required interface methods', () => {
+    test('should implement IPlaybackAdapter interface', () => {
       expect(typeof adapter.play).toBe('function');
       expect(typeof adapter.pause).toBe('function');
       expect(typeof adapter.resume).toBe('function');
       expect(typeof adapter.stop).toBe('function');
+      expect(typeof adapter.destroy).toBe('function');
       expect(typeof adapter.on).toBe('function');
       expect(typeof adapter.off).toBe('function');
     });
@@ -106,22 +96,27 @@ describe('TTS Adapters', () => {
         element: 'paragraph'
       };
 
-      // Should not throw when playing text chunk, but may reject async
+      // Should process text through TextProcessor
+      const formatTextSpy = jest.spyOn(textProcessor, 'formatText');
+
       try {
         await adapter.play(testChunk);
       } catch (error) {
-        // Expected to possibly fail in test environment
+        // Expected to possibly fail in test environment due to missing API keys
         expect(error).toBeDefined();
       }
+
+      expect(formatTextSpy).toHaveBeenCalledWith('Hello, world!', 'paragraph');
     });
 
-    test('should handle pause/resume/stop methods', () => {
+    test('should handle control methods without throwing', () => {
       expect(() => adapter.pause()).not.toThrow();
       expect(() => adapter.resume()).not.toThrow();
       expect(() => adapter.stop()).not.toThrow();
+      expect(() => adapter.destroy()).not.toThrow();
     });
 
-    test('should handle event listeners with correct event types', () => {
+    test('should handle event system correctly', () => {
       const mockCallback = jest.fn();
 
       expect(() => adapter.on('play', mockCallback)).not.toThrow();
@@ -134,24 +129,34 @@ describe('TTS Adapters', () => {
       expect(() => adapter.off('error', mockCallback)).not.toThrow();
       expect(() => adapter.off('wordBoundary', mockCallback)).not.toThrow();
     });
+
+    test('should provide state information methods', () => {
+      if (adapter.getIsPlaying) {
+        expect(typeof adapter.getIsPlaying()).toBe('boolean');
+      }
+      if (adapter.getIsPaused) {
+        expect(typeof adapter.getIsPaused()).toBe('boolean');
+      }
+    });
   });
 
   describe('AzureAdapter', () => {
     let adapter: AzureAdapter;
 
     beforeEach(() => {
-      adapter = new AzureAdapter(mockConfig, mockTextProcessor);
+      adapter = new AzureAdapter(textProcessor);
     });
 
-    test('should create adapter instance', () => {
+    test('should create adapter instance with correct dependencies', () => {
       expect(adapter).toBeInstanceOf(AzureAdapter);
     });
 
-    test('should have required interface methods', () => {
+    test('should implement IPlaybackAdapter interface', () => {
       expect(typeof adapter.play).toBe('function');
       expect(typeof adapter.pause).toBe('function');
       expect(typeof adapter.resume).toBe('function');
       expect(typeof adapter.stop).toBe('function');
+      expect(typeof adapter.destroy).toBe('function');
       expect(typeof adapter.on).toBe('function');
       expect(typeof adapter.off).toBe('function');
     });
@@ -162,17 +167,27 @@ describe('TTS Adapters', () => {
         element: 'paragraph'
       };
 
-      // Azure adapter currently throws as it's not implemented
-      await expect(adapter.play(testChunk)).rejects.toThrow('AzureAdapter not implemented');
+      // Should process text through TextProcessor
+      const formatTextSpy = jest.spyOn(textProcessor, 'formatText');
+
+      try {
+        await adapter.play(testChunk);
+      } catch (error) {
+        // Expected to possibly fail in test environment due to missing API keys
+        expect(error).toBeDefined();
+      }
+
+      expect(formatTextSpy).toHaveBeenCalledWith('Hello from Azure!', 'paragraph');
     });
 
-    test('should handle pause/resume/stop methods', () => {
+    test('should handle control methods without throwing', () => {
       expect(() => adapter.pause()).not.toThrow();
       expect(() => adapter.resume()).not.toThrow();
       expect(() => adapter.stop()).not.toThrow();
+      expect(() => adapter.destroy()).not.toThrow();
     });
 
-    test('should handle event listeners with correct event types', () => {
+    test('should handle event system correctly', () => {
       const mockCallback = jest.fn();
 
       expect(() => adapter.on('play', mockCallback)).not.toThrow();
@@ -185,14 +200,23 @@ describe('TTS Adapters', () => {
       expect(() => adapter.off('error', mockCallback)).not.toThrow();
       expect(() => adapter.off('wordBoundary', mockCallback)).not.toThrow();
     });
+
+    test('should provide state information methods', () => {
+      if (adapter.getIsPlaying) {
+        expect(typeof adapter.getIsPlaying()).toBe('boolean');
+      }
+      if (adapter.getIsPaused) {
+        expect(typeof adapter.getIsPaused()).toBe('boolean');
+      }
+    });
   });
 
   describe('Adapter Interface Compliance', () => {
-    test('both adapters implement the same interface', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
-      const azureAdapter = new AzureAdapter(mockConfig, mockTextProcessor);
+    test('both adapters implement the same IPlaybackAdapter interface', () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
 
-      const expectedMethods = ['play', 'pause', 'resume', 'stop', 'on', 'off'];
+      const expectedMethods = ['play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off'];
 
       expectedMethods.forEach(method => {
         expect(typeof (elevenlabsAdapter as any)[method]).toBe('function');
@@ -200,89 +224,191 @@ describe('TTS Adapters', () => {
       });
     });
 
-    test('adapters handle similar inputs consistently', async () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
-      const azureAdapter = new AzureAdapter(mockConfig, mockTextProcessor);
+    test('adapters use dependency injection correctly', () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
+
+      expect(elevenlabsAdapter).toBeDefined();
+      expect(azureAdapter).toBeDefined();
+    });
+
+    test('adapters handle text processing consistently', async () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
 
       const testChunk: TextChunk = {
         text: 'Test speech text',
         element: 'paragraph'
       };
 
-      // ElevenLabs should handle without throwing (but may reject async)
+      const formatTextSpy = jest.spyOn(textProcessor, 'formatText');
+
+      // Both adapters should call formatText
       try {
         await elevenlabsAdapter.play(testChunk);
       } catch (error) {
         // Expected to possibly fail in test environment
-        expect(error).toBeDefined();
       }
 
-      // Azure should reject as it's not implemented
-      await expect(azureAdapter.play(testChunk)).rejects.toThrow();
+      try {
+        await azureAdapter.play(testChunk);
+      } catch (error) {
+        // Expected to possibly fail in test environment
+      }
+
+      expect(formatTextSpy).toHaveBeenCalledTimes(2);
+      expect(formatTextSpy).toHaveBeenCalledWith('Test speech text', 'paragraph');
     });
 
-    test('adapters handle event system consistently', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
-      const azureAdapter = new AzureAdapter(mockConfig, mockTextProcessor);
+    test('adapters follow Single Responsibility Principle', () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
 
-      const mockCallback = jest.fn();
-      const events: Array<'play' | 'pause' | 'resume' | 'stop' | 'end' | 'error' | 'wordBoundary'> =
-        ['play', 'end', 'error', 'wordBoundary'];
+      // Adapters should only handle playback, not text processing
+      expect(elevenlabsAdapter).not.toHaveProperty('formatText');
+      expect(azureAdapter).not.toHaveProperty('formatText');
 
-      events.forEach(event => {
-        expect(() => elevenlabsAdapter.on(event, mockCallback)).not.toThrow();
-        expect(() => azureAdapter.on(event, mockCallback)).not.toThrow();
-
-        expect(() => elevenlabsAdapter.off(event, mockCallback)).not.toThrow();
-        expect(() => azureAdapter.off(event, mockCallback)).not.toThrow();
-      });
+      // Text processing is delegated to injected processor
+      expect(textProcessor.formatText).toBeDefined();
+      expect(textProcessor.validateText).toBeDefined();
     });
   });
 
-  describe('Error Handling', () => {
-    test('ElevenLabsAdapter handles invalid configuration gracefully', () => {
-      const invalidConfig = {} as IAdapterConfig;
-
-      // Should create instance but may fail during play
-      expect(() => new ElevenLabsAdapter(invalidConfig, mockTextProcessor)).not.toThrow();
-    });
-
-    test('AzureAdapter handles invalid configuration gracefully', () => {
-      const invalidConfig = {} as IAdapterConfig;
-
-      // Should create instance but may fail during play
-      expect(() => new AzureAdapter(invalidConfig, mockTextProcessor)).not.toThrow();
-    });
-
-    test('adapters handle invalid text input', async () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
-      const azureAdapter = new AzureAdapter(mockConfig, mockTextProcessor);
+  describe('Error Handling and Validation', () => {
+    test('adapters handle empty text input gracefully', async () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
 
       const emptyChunk: TextChunk = { text: '', element: 'paragraph' };
 
-      // Should handle empty text (may reject async)
+      // Text processor should handle empty text
+      const formatTextResult = textProcessor.formatText('', 'paragraph');
+      expect(typeof formatTextResult).toBe('string');
+
+      // Adapters should handle the result
       try {
         await elevenlabsAdapter.play(emptyChunk);
       } catch (error) {
-        // Expected to possibly fail in test environment
         expect(error).toBeDefined();
       }
 
-      await expect(azureAdapter.play(emptyChunk)).rejects.toThrow();
+      try {
+        await azureAdapter.play(emptyChunk);
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
     });
 
-    test('adapters provide state information', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(mockConfig, mockTextProcessor);
-      const azureAdapter = new AzureAdapter(mockConfig, mockTextProcessor);
+    test('adapters maintain proper state after operations', () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
 
-      // Both should have state methods (may be optional)
-      if (elevenlabsAdapter.getIsPlaying) {
-        expect(typeof elevenlabsAdapter.getIsPlaying()).toBe('boolean');
-      }
+      // Test lifecycle methods
+      expect(() => {
+        elevenlabsAdapter.pause();
+        elevenlabsAdapter.resume();
+        elevenlabsAdapter.stop();
+        elevenlabsAdapter.destroy();
+      }).not.toThrow();
 
-      if (azureAdapter.getIsPlaying) {
-        expect(typeof azureAdapter.getIsPlaying()).toBe('boolean');
-      }
+      expect(() => {
+        azureAdapter.pause();
+        azureAdapter.resume();
+        azureAdapter.stop();
+        azureAdapter.destroy();
+      }).not.toThrow();
+    });
+
+    test('adapters handle invalid event listeners gracefully', () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
+
+      const mockCallback = jest.fn();
+
+      // Should handle invalid event types gracefully
+      expect(() => {
+        (elevenlabsAdapter as any).on('invalidEvent', mockCallback);
+        (azureAdapter as any).on('invalidEvent', mockCallback);
+      }).not.toThrow();
+
+      expect(() => {
+        (elevenlabsAdapter as any).off('invalidEvent', mockCallback);
+        (azureAdapter as any).off('invalidEvent', mockCallback);
+      }).not.toThrow();
+    });
+  });
+
+  describe('SOLID Principles Compliance', () => {
+    test('Single Responsibility: Adapters only handle TTS playback', () => {
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+
+      // Should not have text processing methods
+      expect(elevenlabsAdapter).not.toHaveProperty('formatText');
+      expect(elevenlabsAdapter).not.toHaveProperty('validateText');
+
+      // Should have only playback methods
+      expect(elevenlabsAdapter).toHaveProperty('play');
+      expect(elevenlabsAdapter).toHaveProperty('pause');
+      expect(elevenlabsAdapter).toHaveProperty('resume');
+      expect(elevenlabsAdapter).toHaveProperty('stop');
+    });
+
+    test('Dependency Inversion: Adapters depend on abstractions', () => {
+      // Adapters depend on ITextProcessor interface, not concrete implementation
+      const customProcessor: ITextProcessor = {
+        formatText: jest.fn(() => 'formatted'),
+        validateText: jest.fn(() => true)
+      };
+
+      expect(() => new ElevenLabsAdapter(customProcessor)).not.toThrow();
+      expect(() => new AzureAdapter(customProcessor)).not.toThrow();
+    });
+
+    test('Open/Closed: Adapters can be extended without modification', () => {
+      // Both adapters implement the same interface
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const azureAdapter = new AzureAdapter(textProcessor);
+
+      // Should be possible to use them interchangeably
+      const adapters = [elevenlabsAdapter, azureAdapter];
+
+      adapters.forEach(adapter => {
+        expect(typeof adapter.play).toBe('function');
+        expect(typeof adapter.stop).toBe('function');
+      });
+    });
+
+    test('Interface Segregation: Clean interfaces without unnecessary methods', () => {
+      const adapter = new ElevenLabsAdapter(textProcessor);
+
+      // Should only have public methods defined in interfaces
+      const expectedMethods = [
+        'play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off',
+        'getIsPlaying', 'getIsPaused', 'getCurrentAudio'
+      ];
+
+      // Private/internal methods that shouldn't be part of the public interface
+      const privateMethodNames = [
+        'validateAndFormatText', 'executePlayRequest', 'makeApiRequest',
+        'processApiResponse', 'setupAudioPlayback', 'updatePlaybackState',
+        'emitEvent', 'createError', 'setupAudioEvents', 'cleanup'
+      ];
+
+      // Get only public methods (exclude constructor and private implementation methods)
+      const adapterMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(adapter))
+        .filter(name => {
+          if (name === 'constructor') return false;
+          if (typeof (adapter as any)[name] !== 'function') return false;
+          if (privateMethodNames.includes(name)) return false;
+          return true;
+        });
+
+      // Verify that all public methods are expected interface methods
+      const unexpectedMethods = adapterMethods.filter(method =>
+        !expectedMethods.includes(method) && !method.startsWith('get')
+      );
+
+      expect(unexpectedMethods).toEqual([]);
     });
   });
 });

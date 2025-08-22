@@ -55,13 +55,8 @@ export default async function handler(
         // Create synthesizer
         const speechSynthesizer = new SpeechSynthesizer(speechConfig, null);
 
-
         try {
-            const buildedSsml = speechSynthesizer.buildSsml(text);
-
-            console.log('Generated SSML:', buildedSsml);
-            console.log('Generated SSML:', text);
-
+            // Generate SSML from text
             const processedText = createSSML(text, azureVoiceName);
 
             console.log('Processed Text:', processedText);
