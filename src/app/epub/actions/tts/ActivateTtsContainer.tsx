@@ -5,8 +5,9 @@ import { TtsActionKeys } from "../../keys";
 import { IVoices } from "readium-speech";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ThContainerHeader, ThPopover, ThActionButton, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
+import { Select, VoiceSelection } from "@/Components/UI/index";
 import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
-import { IPlaybackAdapter } from "@/preferences/types";
+import { IPlaybackAdapter, VoiceInfo } from "@/preferences/types";
 import { TTSAdapterFactory, AdapterType, AdapterOption } from "@/lib/AdapterFactory";
 import {
     EpubTextExtractionService
@@ -20,6 +21,7 @@ import {
 } from "@/lib/services/VoiceManagementService";
 import { KeyboardShortcut } from "@/lib/handlers/KeyboardHandler";
 import { TtsKeyboardHandler } from "@/lib/handlers/TtsKeyboardHandler";
+import { VoiceHandler, VoiceChangeCallback } from "@/lib/handlers/VoiceHandler";
 import { TtsState } from "@/lib/managers/TtsStateManager";
 import styles from "./ActivateTtsContainer.module.css";
 
@@ -30,6 +32,7 @@ interface TTSServiceDependencies {
     voiceManagementService: VoiceManagementService;
     orchestrationService: TtsOrchestrationService;
     keyboardHandler: TtsKeyboardHandler;
+    voiceHandler: VoiceHandler;
     currentAdapter: IPlaybackAdapter;
 }
 
@@ -63,12 +66,31 @@ const createTTSServices = (
 
     const keyboardHandler = new TtsKeyboardHandler(orchestrationService);
 
+    // Create voice handler with callbacks
+    const voiceCallbacks: VoiceChangeCallback = {
+        onVoiceChanged: (voiceId: string, voiceInfo?: VoiceInfo) => {
+            console.log(`Voice changed to: ${voiceId}`, voiceInfo);
+        },
+        onVoiceError: (error: string, voiceId: string) => {
+            console.error(`Voice error for ${voiceId}:`, error);
+        },
+        onVoicesLoaded: (voices: VoiceInfo[]) => {
+            console.log(`Loaded ${voices.length} voices`);
+        }
+    };
+
+    const voiceHandler = new VoiceHandler({
+        adapter,
+        callbacks: voiceCallbacks
+    });
+
     return {
         adapterFactory,
         textExtractionService,
         voiceManagementService,
         orchestrationService,
         keyboardHandler,
+        voiceHandler,
         currentAdapter: adapter
     };
 };
@@ -77,7 +99,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     const dispatch = useAppDispatch();
 
     // UI State only (SOLID: Single Responsibility)
-    const [voices, setVoices] = useState<IVoices[]>([]);
+    const [voices, setVoices] = useState<VoiceInfo[]>([]);
     const [isLoadingVoices, setIsLoadingVoices] = useState(true);
     const [voicesError, setVoicesError] = useState<string | null>(null);
     const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
@@ -113,6 +135,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             console.log('Cleaning up existing services before creating new ones');
             servicesRef.current.orchestrationService.destroy();
             servicesRef.current.keyboardHandler.cleanup();
+            servicesRef.current.voiceHandler.cleanup();
             servicesRef.current = null;
         }
 
@@ -123,6 +146,8 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 setTtsState(state);
                 if (state.error) {
                     setVoicesError(state.error);
+                } else if (state.isPlaying || state.isGenerating) {
+                    setVoicesError(null);
                 }
             };
 
@@ -144,21 +169,21 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         }
 
         return servicesRef.current;
-    }, []); // Remove selectedAdapterType dependency to make this function stable
+    }, []);
 
     const loadVoices = useCallback(async (adapterType?: AdapterType) => {
         setIsLoadingVoices(true);
         setVoicesError(null);
 
         try {
-            const { voiceManagementService } = getServices(adapterType);
-            const voiceList = await voiceManagementService.loadVoices();
+            const { voiceHandler } = getServices(adapterType);
+            const voiceList = await voiceHandler.loadVoices();
+
             setVoices(voiceList);
 
-            // Set default voice
-            if (voiceList.length > 0) {
-                setSelectedVoice(voiceList[0].voiceURI);
-            }
+            // Set default voice (VoiceHandler auto-selects first voice)
+            const selectedVoiceId = voiceHandler.getCurrentVoiceId();
+            setSelectedVoice(selectedVoiceId);
         } catch (error) {
             console.error('Error loading voices:', error);
             setVoicesError('Failed to load voices');
@@ -189,6 +214,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             if (servicesRef.current) {
                 servicesRef.current.orchestrationService.destroy();
                 servicesRef.current.keyboardHandler.cleanup();
+                servicesRef.current.voiceHandler.cleanup();
             }
 
             // Clear services ref to force recreation
@@ -222,12 +248,26 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 console.log('Cleaning up TTS services on component unmount');
                 servicesRef.current.orchestrationService.destroy();
                 servicesRef.current.keyboardHandler.cleanup();
+                servicesRef.current.voiceHandler.cleanup();
                 servicesRef.current = null;
             }
         };
     }, []);
 
 
+
+    const handleVoiceChange = useCallback(async (voiceId: string) => {
+        setSelectedVoice(voiceId);
+
+        try {
+            const { voiceHandler } = getServices();
+            await voiceHandler.setVoice(voiceId);
+            setVoicesError(null);
+        } catch (error) {
+            console.error('Error setting voice:', error);
+            // Don't show error to user for voice setting, as it will be retried on play
+        }
+    }, [getServices]);
 
     const handleGenerateTts = async () => {
         if (!selectedVoice) {
@@ -239,9 +279,13 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         setVoicesError(null);
 
         try {
-            const { orchestrationService, textExtractionService } = getServices();
+            const { orchestrationService, textExtractionService, voiceHandler } = getServices();
 
-            // Extract text using service (SOLID: Single Responsibility)
+            // Ensure the selected voice is set on the adapter before starting playback
+            if (selectedVoice) {
+                await voiceHandler.setVoice(selectedVoice);
+            }
+
             const chunks = await textExtractionService.extractTextChunks();
 
             if (chunks.length === 0) {
@@ -358,14 +402,12 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     </p>
                 </div>
 
-                {/* TTS Provider Selection (SOLID: Open/Closed Principle) */}
+                {/* TTS Provider Selection */}
                 <div className={styles.adapterSelection}>
-                    <label className={styles.label}>
-                        TTS Provider:
-                    </label>
-                    <select
+                    <Select
+                        label="TTS Provider"
                         value={selectedAdapterType}
-                        onChange={(e) => handleAdapterChange(e.target.value as AdapterType)}
+                        onChange={(value) => handleAdapterChange(value as AdapterType)}
                         disabled={ttsState.isGenerating || ttsState.isPlaying || isRecreatingingServices}
                         className={styles.select}
                     >
@@ -375,10 +417,11 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                                 value={adapter.key}
                                 disabled={!adapter.isImplemented}
                             >
-                                {adapter.name} {!adapter.isImplemented ? "(Coming Soon)" : ""}
+                                {adapter.name}{adapter.isImplemented ? '' : ' (Coming Soon)'}
                             </option>
                         ))}
-                    </select>
+                    </Select>
+
 
                     {/* Adapter Description */}
                     {(() => {
@@ -400,26 +443,14 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
 
                 {/* Voice Selection */}
                 <div className={styles.voiceSelection}>
-                    <label className={styles.voiceLabel}>
-                        Voice Selection:
-                    </label>
-                    {isLoadingVoices ? (
-                        <span className={styles.loadingText}>Loading voices...</span>
-                    ) : (
-                        <select
-                            value={selectedVoice || ''}
-                            onChange={(e) => setSelectedVoice(e.target.value)}
-                            disabled={ttsState.isGenerating || ttsState.isPlaying}
-                            className={styles.select}
-                        >
-                            <option value="">Select a voice</option>
-                            {voices.map((voice) => (
-                                <option key={voice.voiceURI} value={voice.voiceURI}>
-                                    {voice.name}
-                                </option>
-                            ))}
-                        </select>
-                    )}
+                    <VoiceSelection
+                        voices={voices}
+                        selectedVoice={selectedVoice}
+                        onVoiceChange={handleVoiceChange}
+                        disabled={ttsState.isGenerating || ttsState.isPlaying}
+                        loading={isLoadingVoices}
+                        error={voicesError}
+                    />
                 </div>
 
                 <div className={styles.buttonContainer}>

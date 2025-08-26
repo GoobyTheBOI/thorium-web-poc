@@ -391,7 +391,9 @@ describe('TTS Adapters - SOLID Architecture', () => {
       const privateMethodNames = [
         'validateAndFormatText', 'executePlayRequest', 'makeApiRequest',
         'processApiResponse', 'setupAudioPlayback', 'updatePlaybackState',
-        'emitEvent', 'createError', 'setupAudioEvents', 'cleanup'
+        'emitEvent', 'createError', 'setupAudioEvents', 'cleanup',
+        // Voice methods are private and only accessible through voices property
+        'getVoices', 'setVoice', 'getVoicesByGender', 'getCurrentVoiceGender'
       ];
 
       // Get only public methods (exclude constructor and private implementation methods)

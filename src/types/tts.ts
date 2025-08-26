@@ -31,7 +31,7 @@ export const TTS_CONSTANTS = {
     CHUNK_SIZE_FOR_TESTING: 1,
     MAX_CHUNKS: 5,
     // Reading modes
-    ENABLE_WHOLE_PAGE_READING: true,
+    ENABLE_WHOLE_PAGE_READING: false,
 } as const;
 
 export const IFRAME_SELECTORS = [

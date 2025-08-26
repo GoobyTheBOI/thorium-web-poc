@@ -17,17 +17,18 @@ export interface IPlaybackEvents {
 }
 export interface IVoiceProvider {
     getVoices(): Promise<VoiceInfo[]>;
-    setVoice(voiceId: string): void;
+    setVoice(voiceId: string): Promise<void>;
+    getVoicesByGender?(gender: 'male' | 'female'): Promise<VoiceInfo[]>;
+    getCurrentVoiceGender?(): Promise<'male' | 'female' | 'neutral' | null>;
 }
 
 export interface IPlaybackAdapter extends IAudioPlayback, IPlaybackEvents {
-    // Optioneel voice management
     voices?: IVoiceProvider;
 }
 
 export interface IAdapterConfig {
     readonly apiKey: string;
-    readonly voiceId: string;
+    voiceId: string;
     readonly modelId?: string;
 }
 
@@ -51,5 +52,4 @@ export interface VoiceInfo {
     name: string;
     language: string;
     gender?: 'male' | 'female' | 'neutral';
-    quality?: 'standard' | 'premium';
 }

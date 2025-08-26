@@ -2,9 +2,12 @@ import type {
     IAdapterConfig,
     ITextProcessor,
     ITTSError,
-    IPlaybackAdapter
+    IPlaybackAdapter,
+    IVoiceProvider,
+    VoiceInfo
 } from '@/preferences/types';
 import { TextChunk } from '@/types/tts';
+import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -18,23 +21,54 @@ interface PlayResult {
 }
 
 export class ElevenLabsAdapter implements IPlaybackAdapter {
-    private readonly config: IAdapterConfig = {
+    private config: IAdapterConfig = {
         apiKey: process.env.ELEVENLABS_API_KEY || '',
-        voiceId: 'JBFqnCBsd6RMkjVDRZzb',
+        voiceId: 'EXAVITQu4vr4xnSDxMaL',
         modelId: 'eleven_multilingual_v2'
     };
     private readonly textProcessor: ITextProcessor;
+    private readonly voiceService: VoiceManagementService;
     private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
 
-    // Audio state management
     private currentAudio: HTMLAudioElement | null = null;
     private isPlaying: boolean = false;
     private isPaused: boolean = false;
+
+    // Implement voices property for legacy support
+    public readonly voices: IVoiceProvider;
 
     constructor(
         textProcessor: ITextProcessor,
     ) {
         this.textProcessor = textProcessor;
+        this.voiceService = new VoiceManagementService();
+
+        // Create voices property that delegates to this adapter's methods
+        this.voices = {
+            getVoices: () => this.getVoices(),
+            setVoice: (voiceId: string) => this.setVoice(voiceId),
+            getVoicesByGender: (gender: 'male' | 'female') => this.getVoicesByGender(gender),
+            getCurrentVoiceGender: () => this.getCurrentVoiceGender()
+        };
+    }
+
+    // Private voice methods - only available through voices property
+    private async getVoices(): Promise<VoiceInfo[]> {
+        return await this.voiceService.loadElevenLabsVoices();
+    }
+
+    private async setVoice(voiceId: string): Promise<void> {
+        this.voiceService.selectVoice(voiceId);
+        this.config.voiceId = voiceId;
+        console.log(`ElevenLabsAdapter: Voice changed to ${voiceId}`);
+    }
+
+    private async getVoicesByGender(gender: 'male' | 'female'): Promise<VoiceInfo[]> {
+        return await this.voiceService.getVoicesByGender(gender);
+    }
+
+    private async getCurrentVoiceGender(): Promise<'male' | 'female' | 'neutral' | null> {
+        return await this.voiceService.getCurrentVoiceGender();
     }
 
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
@@ -126,14 +160,22 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
     }
 
     private async executePlayRequest(config: PlayRequestConfig): Promise<PlayResult> {
+        console.log('ElevenLabsAdapter: Starting play request with config:', {
+            text: typeof config.text === 'string' ? config.text.substring(0, 50) + '...' : `${config.text.length} chunks`,
+            voiceId: config.voiceId,
+            modelId: config.modelId
+        });
+
         try {
             // Clean up any existing audio first
             this.cleanup();
 
             // Make API request
+            console.log('ElevenLabsAdapter: Making API request...');
             const response = await this.makeApiRequest(config);
 
             // Process response
+            console.log('ElevenLabsAdapter: Processing API response...');
             const { audioBlob, requestId } = await this.processApiResponse(response);
 
             // Setup and start audio playback

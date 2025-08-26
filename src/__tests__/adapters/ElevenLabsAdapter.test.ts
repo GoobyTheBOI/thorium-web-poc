@@ -255,7 +255,7 @@ describe('ElevenLabsAdapter', () => {
 
   describe('Configuration Management', () => {
     test('uses default configuration correctly', () => {
-      expect((adapter as any).config.voiceId).toBe('JBFqnCBsd6RMkjVDRZzb');
+      expect((adapter as any).config.voiceId).toBe('EXAVITQu4vr4xnSDxMaL');
       expect((adapter as any).config.modelId).toBe('eleven_multilingual_v2');
       expect((adapter as any).config.apiKey).toBe('test-elevenlabs-key'); // From jest.setup.js
     });
