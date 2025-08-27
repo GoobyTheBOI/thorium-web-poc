@@ -2,8 +2,9 @@ import { createMocks } from 'node-mocks-http';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import handler from '../../../../pages/api/tts/azure';
 import { TTSErrorResponse, TTSRequestBody } from '../../../../types/tts';
+import { TEST_CONFIG } from '../../../config/testConstants';
 
-describe('/api/tts/azure', () => {
+describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
   const originalEnv = process.env;
 
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import { TTSAdapterFactory } from '../lib/AdapterFactory';
+import { TTSAdapterFactory } from '../lib/factories/AdapterFactory';
 import { VoiceManagementService } from '../lib/services/VoiceManagementService';
 import { EpubTextExtractionService } from '../lib/services/TextExtractionService';
 import { KeyboardHandler } from '../lib/handlers/KeyboardHandler';

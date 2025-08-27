@@ -1,6 +1,7 @@
 import { ElevenLabsAdapter } from '@/lib/adapters/ElevenLabsAdapter';
 import { DefaultTextProcessor } from '@/lib/TextProcessor';
 import { VoiceInfo } from '@/preferences/types';
+import { TEST_CONFIG } from './config/testConstants';
 
 // Mock VoiceManagementService
 jest.mock('@/lib/services/VoiceManagementService', () => {
@@ -155,7 +156,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
             await adapter.play({ text: 'Mannelijke test tekst', element: 'normal' });
 
             // Controleer dat de juiste voiceId wordt gebruikt
-            expect(mockFetch).toHaveBeenCalledWith('/api/tts/elevenlabs',
+            expect(mockFetch).toHaveBeenCalledWith(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS,
                 expect.objectContaining({
                     body: expect.stringContaining(`"voiceId":"${maleVoiceId}"`)
                 })
@@ -166,7 +167,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
             await adapter.play({ text: 'Vrouwelijke test tekst', element: 'normal' });
 
             // Controleer dat vrouwelijke stem wordt gebruikt
-            expect(mockFetch).toHaveBeenCalledWith('/api/tts/elevenlabs',
+            expect(mockFetch).toHaveBeenCalledWith(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS,
                 expect.objectContaining({
                     body: expect.stringContaining(`"voiceId":"${femaleVoiceId}"`)
                 })

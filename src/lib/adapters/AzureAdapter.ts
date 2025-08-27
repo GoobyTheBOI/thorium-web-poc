@@ -39,9 +39,10 @@ export class AzureAdapter implements IPlaybackAdapter {
 
     constructor(
         textProcessor: ITextProcessor,
+        voiceService: VoiceManagementService
     ) {
         this.textProcessor = textProcessor;
-        this.voiceService = new VoiceManagementService();
+        this.voiceService = voiceService;
 
         this.voices = {
             getVoices: () => this.getVoices(),

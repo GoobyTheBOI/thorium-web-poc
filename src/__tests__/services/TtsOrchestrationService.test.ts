@@ -1,7 +1,7 @@
 import { TtsOrchestrationService, ITtsOrchestrationService, TtsCallbacks } from '../../lib/services/TtsOrchestrationService';
 import { ITextExtractionService } from '../../lib/services/TextExtractionService';
 import { TtsStateManager, TtsState } from '../../lib/managers/TtsStateManager';
-import { TTSAdapterFactory, AdapterType } from '../../lib/AdapterFactory';
+import { TTSAdapterFactory, AdapterType } from '../../lib/factories/AdapterFactory';
 import { IPlaybackAdapter } from '../../preferences/types';
 import { TextChunk, TTS_CONSTANTS } from '../../types/tts';
 

@@ -1,4 +1,5 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
+import { TEST_CONFIG } from '../config/testConstants';
 
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
   ElevenLabsApi: jest.fn().mockImplementation(() => ({
@@ -12,12 +13,13 @@ describe('ElevenLabsAdapter', () => {
   let adapter: ElevenLabsAdapter;
   let mockConfig: any;
   let mockTextProcessor: any;
+  let mockVoiceService: any;
 
   beforeEach(() => {
     mockConfig = {
-      voiceId: 'test-voice-id',
-      modelId: 'eleven_multilingual_v2',
-      apiKey: 'test-api-key'
+      voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.ELEVENLABS,
+      modelId: TEST_CONFIG.TEST_DATA.MODEL_IDS.ELEVENLABS_MULTILINGUAL,
+      apiKey: TEST_CONFIG.TEST_DATA.API_KEYS.ELEVENLABS
     };
 
     mockTextProcessor = {
@@ -26,7 +28,13 @@ describe('ElevenLabsAdapter', () => {
       validateText: jest.fn((text) => true), // Always return true for tests
     };
 
-    adapter = new ElevenLabsAdapter(mockTextProcessor);
+    mockVoiceService = {
+      getVoices: jest.fn(() => Promise.resolve([])),
+      setVoice: jest.fn(),
+      getCurrentVoice: jest.fn(() => ({ id: TEST_CONFIG.TEST_DATA.VOICE_IDS.ELEVENLABS, name: 'Test Voice' }))
+    };
+
+    adapter = new ElevenLabsAdapter(mockTextProcessor, mockVoiceService);
     jest.clearAllMocks();
   });
 
@@ -40,7 +48,7 @@ describe('ElevenLabsAdapter', () => {
   describe('Text-to-Speech Processing', () => {
     test('play method processes text chunk correctly', async () => {
       const textChunk = {
-        text: 'Hello world',
+        text: TEST_CONFIG.TEST_DATA.SIMPLE_TEXT,
         element: 'paragraph',
         index: 0
       };
@@ -52,7 +60,7 @@ describe('ElevenLabsAdapter', () => {
 
       const result = await adapter.play(textChunk);
 
-      expect(mockTextProcessor.formatText).toHaveBeenCalledWith('Hello world', 'paragraph');
+      expect(mockTextProcessor.formatText).toHaveBeenCalledWith(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT, 'paragraph');
       expect(result).toEqual({ requestId: 'test-request-id' });
     });
 
@@ -74,9 +82,9 @@ describe('ElevenLabsAdapter', () => {
     });
 
     test('validateAndFormatText handles various input types', () => {
-      expect(() => (adapter as any).validateAndFormatText('Hello')).not.toThrow();
-      expect(() => (adapter as any).validateAndFormatText(['Hello', 'World'])).not.toThrow();
-      expect(() => (adapter as any).validateAndFormatText({ text: 'Hello' })).not.toThrow();
+      expect(() => (adapter as any).validateAndFormatText(TEST_CONFIG.TEST_DATA.SHORT_TEXT)).not.toThrow();
+      expect(() => (adapter as any).validateAndFormatText([TEST_CONFIG.TEST_DATA.SHORT_TEXT, 'World'])).not.toThrow();
+      expect(() => (adapter as any).validateAndFormatText({ text: TEST_CONFIG.TEST_DATA.SHORT_TEXT })).not.toThrow();
     });
   });
 
@@ -256,12 +264,12 @@ describe('ElevenLabsAdapter', () => {
   describe('Configuration Management', () => {
     test('uses default configuration correctly', () => {
       expect((adapter as any).config.voiceId).toBe('EXAVITQu4vr4xnSDxMaL');
-      expect((adapter as any).config.modelId).toBe('eleven_multilingual_v2');
+      expect((adapter as any).config.modelId).toBe(TEST_CONFIG.TEST_DATA.MODEL_IDS.ELEVENLABS_MULTILINGUAL);
       expect((adapter as any).config.apiKey).toBe('test-elevenlabs-key'); // From jest.setup.js
     });
 
     test('integrates with text processor', () => {
-      const testText = 'Hello world';
+      const testText = TEST_CONFIG.TEST_DATA.SIMPLE_TEXT;
       const testElement = 'paragraph';
 
       (adapter as any).textProcessor.formatText(testText, testElement);

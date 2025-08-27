@@ -1,5 +1,6 @@
 import { DefaultTextProcessor } from '../../lib/TextProcessor';
 import { TTS_CONSTANTS } from '../../types/tts';
+import { TEST_CONFIG } from '../config/testConstants';
 
 describe('DefaultTextProcessor - SOLID Architecture', () => {
   let processor: DefaultTextProcessor;
@@ -27,8 +28,8 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
 
   describe('SSML Text Formatting', () => {
     test('formatText handles basic text with SSML escaping', () => {
-      const result = processor.formatText('Hello world', 'normal');
-      expect(result).toBe('Hello world');
+      const result = processor.formatText(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT, 'normal');
+      expect(result).toBe(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT);
       expect(typeof result).toBe('string');
     });
 
@@ -173,7 +174,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
     });
 
     test('handles case-insensitive element types', () => {
-      const text = 'Test text';
+      const text = TEST_CONFIG.TEST_DATA.SAMPLE_TEXT;
 
       const lowerResult = processor.formatText(text, 'h1');
       const upperResult = processor.formatText(text, 'H1');
@@ -195,7 +196,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
 
     test('validateText returns true for valid text', () => {
       const validTexts = [
-        'Hello world',
+        TEST_CONFIG.TEST_DATA.SIMPLE_TEXT,
         'This is a longer sentence with punctuation.',
         'Text with numbers 123 and symbols!',
         'Internationalization: héllo wörld',
@@ -283,13 +284,13 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
     });
 
     test('formatText handles invalid element types gracefully', () => {
-      const text = 'Test text';
+      const text = TEST_CONFIG.TEST_DATA.SAMPLE_TEXT;
       const invalidTypes = [null, undefined, 123, {}, []];
 
       invalidTypes.forEach(elementType => {
         expect(() => processor.formatText(text, elementType as any)).not.toThrow();
         const result = processor.formatText(text, elementType as any);
-        expect(result).toBe('Test text'); // Should default to normal
+        expect(result).toBe(TEST_CONFIG.TEST_DATA.SAMPLE_TEXT); // Should default to normal
       });
     });
 
@@ -362,7 +363,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
     });
 
     test('handles repeated processing efficiently', () => {
-      const text = 'Sample text for performance testing';
+      const text = TEST_CONFIG.TEST_DATA.PERFORMANCE_TEXT;
 
       const startTime = performance.now();
       for (let i = 0; i < 100; i++) {

@@ -1,7 +1,8 @@
 import type { IAdapterFactory, IAdapterConfig, IPlaybackAdapter } from '@/preferences/types';
-import { DefaultTextProcessor } from './TextProcessor';
-import { ElevenLabsAdapter } from './adapters/ElevenLabsAdapter';
-import { AzureAdapter } from './adapters/AzureAdapter';
+import { DefaultTextProcessor } from '../TextProcessor';
+import { ElevenLabsAdapter } from '../adapters/ElevenLabsAdapter';
+import { AzureAdapter } from '../adapters/AzureAdapter';
+import { VoiceManagementService } from '../services/VoiceManagementService';
 
 export type AdapterType = 'elevenlabs' | 'azure' | 'web-speech';
 
@@ -15,6 +16,8 @@ export interface AdapterOption {
 
 export class TTSAdapterFactory implements IAdapterFactory {
     private readonly textProcessor = new DefaultTextProcessor();
+
+    constructor(private voiceService: VoiceManagementService) {}
 
     static readonly AVAILABLE_ADAPTERS: AdapterOption[] = [
         {
@@ -51,9 +54,9 @@ export class TTSAdapterFactory implements IAdapterFactory {
     createAdapter(type: AdapterType): IPlaybackAdapter {
         switch (type) {
             case 'elevenlabs':
-                return new ElevenLabsAdapter(this.textProcessor);
+                return new ElevenLabsAdapter(this.textProcessor, this.voiceService);
             case 'azure':
-                return new AzureAdapter(this.textProcessor);
+                return new AzureAdapter(this.textProcessor, this.voiceService);
             case 'web-speech':
                 throw new Error('Web Speech API adapter not yet implemented');
             default:

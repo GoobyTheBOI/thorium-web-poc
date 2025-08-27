@@ -39,9 +39,10 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
 
     constructor(
         textProcessor: ITextProcessor,
+        voiceService: VoiceManagementService
     ) {
         this.textProcessor = textProcessor;
-        this.voiceService = new VoiceManagementService();
+        this.voiceService = voiceService;
 
         // Create voices property that delegates to this adapter's methods
         this.voices = {

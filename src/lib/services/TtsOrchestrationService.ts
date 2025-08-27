@@ -2,7 +2,7 @@ import { TTS_CONSTANTS } from '@/types/tts';
 import { IPlaybackAdapter } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 import { TtsStateManager, TtsState } from '../managers/TtsStateManager';
-import { TTSAdapterFactory, AdapterType } from '../AdapterFactory';
+import { TTSAdapterFactory, AdapterType } from '../factories/AdapterFactory';
 
 export interface TtsCallbacks {
     onStateChange?: (state: TtsState) => void;
@@ -24,20 +24,18 @@ export interface ITtsOrchestrationService {
 }
 
 export class TtsOrchestrationService implements ITtsOrchestrationService {
-    private stateManager: TtsStateManager;
     private isExecuting: boolean = false;
-    private adapterFactory: TTSAdapterFactory;
     private callbacks: TtsCallbacks;
     private currentAdapterType: AdapterType | null = null;
 
     constructor(
         private adapter: IPlaybackAdapter,
         private textExtractor: ITextExtractionService,
+        private stateManager: TtsStateManager,
+        private adapterFactory: TTSAdapterFactory,
         initialAdapterType?: AdapterType,
         callbacks?: TtsCallbacks
     ) {
-        this.stateManager = new TtsStateManager();
-        this.adapterFactory = new TTSAdapterFactory();
         this.callbacks = callbacks || {};
         this.currentAdapterType = initialAdapterType || null;
 

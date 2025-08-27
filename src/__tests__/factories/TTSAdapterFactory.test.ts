@@ -1,4 +1,4 @@
-import { TTSAdapterFactory, AdapterType } from '../../lib/AdapterFactory';
+import { TTSAdapterFactory, AdapterType } from '../../lib/factories/AdapterFactory';
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
 import { DefaultTextProcessor } from '../../lib/TextProcessor';

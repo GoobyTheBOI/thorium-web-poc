@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
+import { TEST_CONFIG, createTestUrl } from '../../../config/testConstants';
 
 // Mock URL constructor for tests
 global.URL = jest.fn((url) => ({
   href: url,
-  origin: 'http://localhost:3000',
-  pathname: url.replace('http://localhost:3000', ''),
+  origin: TEST_CONFIG.BASE_URL,
+  pathname: url.replace(TEST_CONFIG.BASE_URL, ''),
   toString: () => url
 })) as any;
 
@@ -74,7 +75,7 @@ describe('TTS API Middleware', () => {
         voiceId: 'test-voice-id'
       };
 
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'POST',
         body: validRequestBody,
       });
@@ -88,12 +89,12 @@ describe('TTS API Middleware', () => {
     test('allows POST requests with optional TTSRequestBody fields', async () => {
       const requestBodyWithOptionals: TTSRequestBody = {
         text: 'Hello world',
-        voiceId: 'test-voice-id',
+        voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.ELEVENLABS,
         modelId: 'eleven_turbo_v2',
         useContext: true
       };
 
-      const request = createNextRequest('http://localhost:3000/api/tts/elevenlabs', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS), {
         method: 'POST',
         body: requestBodyWithOptionals,
       });
@@ -106,13 +107,13 @@ describe('TTS API Middleware', () => {
 
     test('allows POST requests to all TTS endpoints', async () => {
       const endpoints = [
-        'http://localhost:3000/api/tts/azure',
-        'http://localhost:3000/api/tts/elevenlabs'
+        createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS),
+        createTestUrl(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS)
       ];
 
       const validRequestBody: TTSRequestBody = {
-        text: 'Test text',
-        voiceId: 'test-voice'
+        text: TEST_CONFIG.TEST_DATA.SAMPLE_TEXT,
+        voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.GENERIC
       };
 
       for (const endpoint of endpoints) {
@@ -131,8 +132,8 @@ describe('TTS API Middleware', () => {
 
   describe('HTTP Method Restriction and Security', () => {
     const ttsEndpoints = [
-      'http://localhost:3000/api/tts/azure',
-      'http://localhost:3000/api/tts/elevenlabs'
+      createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS),
+      createTestUrl(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS)
     ];
 
     test('rejects GET requests with 405 Method Not Allowed', async () => {
@@ -153,7 +154,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('rejects PUT requests with proper error response', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'PUT',
         body: { text: 'test' },
       });
@@ -168,7 +169,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('rejects DELETE requests with security considerations', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'DELETE',
       });
 
@@ -181,7 +182,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('rejects PATCH requests consistently', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/elevenlabs', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS), {
         method: 'PATCH',
         body: { text: 'partial update' },
       });
@@ -192,7 +193,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('rejects HEAD requests for security', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'HEAD',
       });
 
@@ -202,7 +203,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('rejects OPTIONS requests to prevent CORS preflight exploitation', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'OPTIONS',
       });
 
@@ -227,14 +228,14 @@ describe('TTS API Middleware', () => {
 
     test('Open/Closed: Middleware works with any TTS endpoint extension', async () => {
       const futureEndpoints = [
-        'http://localhost:3000/api/tts/google',
-        'http://localhost:3000/api/tts/amazon',
-        'http://localhost:3000/api/tts/custom-provider'
+        createTestUrl('/api/tts/google'),
+        createTestUrl('/api/tts/amazon'),
+        createTestUrl('/api/tts/custom-provider')
       ];
 
       const validRequestBody: TTSRequestBody = {
-        text: 'Test text',
-        voiceId: 'test-voice'
+        text: TEST_CONFIG.TEST_DATA.SAMPLE_TEXT,
+        voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.GENERIC
       };
 
       for (const endpoint of futureEndpoints) {
@@ -251,7 +252,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('Interface Segregation: Uses focused TTSErrorResponse interface', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'GET',
       });
 
@@ -264,9 +265,9 @@ describe('TTS API Middleware', () => {
     });
 
     test('Dependency Inversion: Depends on Next.js abstractions', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'POST',
-        body: { text: 'test', voiceId: 'test' } as TTSRequestBody,
+        body: { text: TEST_CONFIG.TEST_DATA.SAMPLE_TEXT, voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.GENERIC } as TTSRequestBody,
       });
 
       expect(request.method).toBe('POST');
@@ -279,7 +280,7 @@ describe('TTS API Middleware', () => {
 
   describe('Edge Cases and Error Handling', () => {
     test('handles requests with missing body gracefully', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'POST',
       });
 
@@ -290,7 +291,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('handles requests with malformed JSON body', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'POST',
         body: 'invalid json {', // This will be stringified, but that's intentional for testing
         headers: {
@@ -308,7 +309,7 @@ describe('TTS API Middleware', () => {
       const invalidMethods = ['GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
       for (const method of invalidMethods) {
-        const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+        const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
           method,
         });
 
@@ -324,7 +325,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('handles case-sensitive HTTP methods correctly', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'post', // lowercase
       });
 
@@ -334,9 +335,9 @@ describe('TTS API Middleware', () => {
     });
 
     test('preserves request context for valid POST requests', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'POST',
-        body: { text: 'test', voiceId: 'test' } as TTSRequestBody,
+        body: { text: TEST_CONFIG.TEST_DATA.SAMPLE_TEXT, voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.GENERIC } as TTSRequestBody,
         headers: {
           'Authorization': 'Bearer test-token',
           'User-Agent': 'test-agent',
@@ -360,9 +361,9 @@ describe('TTS API Middleware', () => {
 
     test('ensures middleware applies to correct URL patterns', async () => {
       const validUrls = [
-        'http://localhost:3000/api/tts/azure',
-        'http://localhost:3000/api/tts/elevenlabs',
-        'http://localhost:3000/api/tts/custom-provider'
+        createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS),
+        createTestUrl(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS),
+        createTestUrl('/api/tts/custom-provider')
       ];
 
       for (const url of validUrls) {
@@ -371,7 +372,7 @@ describe('TTS API Middleware', () => {
     });
 
     test('validates response headers for error responses', async () => {
-      const request = createNextRequest('http://localhost:3000/api/tts/azure', {
+      const request = createNextRequest(createTestUrl(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS), {
         method: 'GET',
       });
 
