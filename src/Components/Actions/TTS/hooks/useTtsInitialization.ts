@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AdapterType, AVAILABLE_ADAPTERS } from '@/lib/factories/AdapterFactory';
 import { TTSServices } from '@/lib/factories/TTSServicesFactory';
-import { TtsState } from '@/lib/ttsReducer';
+import { TtsReducerState } from '@/lib/ttsReducer';
 import {
   setAvailableAdapters,
   setIsPlaying,
@@ -13,7 +13,7 @@ import {
 } from '@/lib/ttsReducer';
 
 export interface UseTtsInitializationProps {
-  state: TtsState;
+  state: TtsReducerState;
   dispatch: (action: { type: string; payload?: unknown }) => void;
   getServices: (adapterType?: AdapterType) => TTSServices;
   cleanup: () => void;

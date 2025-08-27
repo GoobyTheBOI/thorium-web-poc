@@ -2,17 +2,18 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AdapterType, AdapterInfo } from "@/lib/factories/AdapterFactory";
 import { VoiceInfo } from "@/preferences/types";
 
-export interface TtsState {
+export interface TtsReducerState {
+  selectedAdapterType: AdapterType;
+  availableAdapters: AdapterInfo[];
+  isRecreatingServices: boolean;
+  voices: VoiceInfo[];
+  selectedVoice: string | null;
+  isLoadingVoices: boolean;
+  voicesError: string | null;
   isPlaying: boolean;
   isPaused: boolean;
-  currentText: string;
-  currentAdapter: AdapterType;
-  availableAdapters: AdapterInfo[];
-  voices: VoiceInfo[];
-  selectedVoiceId: string | null;
-  error: string | null;
   isGenerating: boolean;
-  isRecreatingServices: boolean;
+  error: string | null;
 }
 
 const initialState: TtsReducerState = {

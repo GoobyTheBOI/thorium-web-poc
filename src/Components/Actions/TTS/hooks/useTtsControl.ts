@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
 import { TTSServices } from '@/lib/factories/TTSServicesFactory';
-import { TtsState } from '@/lib/ttsReducer';
+import { TtsReducerState } from '@/lib/ttsReducer';
 import {
   setIsGenerating,
   setVoicesError
 } from '@/lib/ttsReducer';
 
 export interface UseTtsControlProps {
-  state: TtsState;
+  state: TtsReducerState;
   getServices: (adapterType?: AdapterType) => TTSServices;
   dispatch: (action: { type: string; payload?: unknown }) => void;
   onError?: (error: string) => void;
@@ -21,7 +21,7 @@ export interface UseTtsControlProps {
 export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsControlProps) {
 
   const generateTts = useCallback(async () => {
-    if (!state.selectedVoiceId) {
+    if (!state.selectedVoice) {
       const errorMessage = 'Please select a voice';
       dispatch(setVoicesError(errorMessage));
       onError?.(errorMessage);
@@ -34,8 +34,8 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     try {
       const { orchestrationService, textExtractionService, voiceHandler } = getServices();
 
-      if (state.selectedVoiceId) {
-        await voiceHandler.setVoice(state.selectedVoiceId);
+      if (state.selectedVoice) {
+        await voiceHandler.setVoice(state.selectedVoice);
       }
 
       const chunks = await textExtractionService.extractTextChunks();
@@ -55,7 +55,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     } finally {
       dispatch(setIsGenerating(false));
     }
-  }, [state.selectedVoiceId, getServices, dispatch, onError]);
+  }, [state.selectedVoice, getServices, dispatch, onError]);
 
   const pause = useCallback(() => {
     const { orchestrationService } = getServices();
