@@ -1,11 +1,11 @@
 import React from 'react';
 import { Select } from '@/Components/UI/index';
-import { AdapterType, AdapterOption } from '@/lib/factories/AdapterFactory';
+import { AdapterType, AdapterInfo } from '@/lib/factories/AdapterFactory';
 import styles from '@/app/epub/actions/tts/ActivateTtsContainer.module.css';
 
 export interface TtsProviderSelectorProps {
   selectedAdapterType: AdapterType;
-  availableAdapters: AdapterOption[];
+  availableAdapters: AdapterInfo[];
   isRecreatingServices: boolean;
   isGenerating: boolean;
   isPlaying: boolean;
@@ -45,8 +45,7 @@ export const TtsProviderSelector: React.FC<TtsProviderSelectorProps> = ({
       {/* Adapter Description */}
       {currentAdapter && (
         <p className={styles.adapterDescription}>
-          {currentAdapter.description}
-          {currentAdapter.requiresApiKey && " (Requires API Key)"}
+          {currentAdapter.name} TTS Service
         </p>
       )}
 

@@ -1,66 +1,31 @@
-import type { IAdapterFactory, IAdapterConfig, IPlaybackAdapter } from '@/preferences/types';
+import type { IPlaybackAdapter } from '@/preferences/types';
 import { DefaultTextProcessor } from '../TextProcessor';
 import { ElevenLabsAdapter } from '../adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../adapters/AzureAdapter';
 import { VoiceManagementService } from '../services/VoiceManagementService';
 
-export type AdapterType = 'elevenlabs' | 'azure' | 'web-speech';
+export type AdapterType = 'elevenlabs' | 'azure';
 
-export interface AdapterOption {
+export interface AdapterInfo {
     key: AdapterType;
     name: string;
-    description: string;
     isImplemented: boolean;
-    requiresApiKey: boolean;
 }
 
-export class TTSAdapterFactory implements IAdapterFactory {
-    private readonly textProcessor = new DefaultTextProcessor();
+export const AVAILABLE_ADAPTERS: AdapterInfo[] = [
+    { key: 'elevenlabs', name: 'ElevenLabs', isImplemented: true },
+    { key: 'azure', name: 'Azure TTS', isImplemented: true }
+];
 
-    constructor(private voiceService: VoiceManagementService) {}
+export function createAdapter(type: AdapterType, voiceService: VoiceManagementService): IPlaybackAdapter {
+    const textProcessor = new DefaultTextProcessor();
 
-    static readonly AVAILABLE_ADAPTERS: AdapterOption[] = [
-        {
-            key: 'elevenlabs',
-            name: 'ElevenLabs',
-            description: 'High-quality AI voice synthesis with contextual understanding',
-            isImplemented: true,
-            requiresApiKey: true
-        },
-        {
-            key: 'azure',
-            name: 'Microsoft Azure TTS',
-            description: 'Microsoft Azure Text-to-Speech service (Coming Soon)',
-            isImplemented: true,
-            requiresApiKey: true
-        },
-        {
-            key: 'web-speech',
-            name: 'Web Speech API',
-            description: 'Browser native text-to-speech (Coming Soon)',
-            isImplemented: false,
-            requiresApiKey: false
-        }
-    ];
-
-    static getAvailableAdapters(): AdapterOption[] {
-        return TTSAdapterFactory.AVAILABLE_ADAPTERS;
-    }
-
-    static getImplementedAdapters(): AdapterOption[] {
-        return TTSAdapterFactory.AVAILABLE_ADAPTERS.filter(adapter => adapter.isImplemented);
-    }
-
-    createAdapter(type: AdapterType): IPlaybackAdapter {
-        switch (type) {
-            case 'elevenlabs':
-                return new ElevenLabsAdapter(this.textProcessor, this.voiceService);
-            case 'azure':
-                return new AzureAdapter(this.textProcessor, this.voiceService);
-            case 'web-speech':
-                throw new Error('Web Speech API adapter not yet implemented');
-            default:
-                throw new Error(`Unknown adapter type: ${type}`);
-        }
+    switch (type) {
+        case 'elevenlabs':
+            return new ElevenLabsAdapter(textProcessor, voiceService);
+        case 'azure':
+            return new AzureAdapter(textProcessor, voiceService);
+        default:
+            throw new Error(`Unknown adapter type: ${type}`);
     }
 }

@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
-import { TTSServicesFactory, TTSServiceDependencies } from '@/lib/factories/TTSServicesFactory';
+import { createTTSServices, destroyTTSServices, TTSServices } from '@/lib/factories/TTSServicesFactory';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
 import { TtsState } from '@/lib/managers/TtsStateManager';
 
@@ -9,7 +9,7 @@ export interface UseServiceManagerProps {
 }
 
 export function useServiceManager({ onStateChange, onAdapterSwitch }: UseServiceManagerProps) {
-  const servicesRef = useRef<TTSServiceDependencies | null>(null);
+  const servicesRef = useRef<TTSServices | null>(null);
   const currentAdapterTypeRef = useRef<AdapterType>('elevenlabs');
 
   const onStateChangeRef = useRef(onStateChange);
@@ -23,29 +23,17 @@ export function useServiceManager({ onStateChange, onAdapterSwitch }: UseService
     onAdapterSwitchRef.current = onAdapterSwitch;
   }, [onAdapterSwitch]);
 
-  const getServices = useCallback((adapterType?: AdapterType): TTSServiceDependencies => {
+  const getServices = useCallback((adapterType?: AdapterType): TTSServices => {
     const targetAdapterType = adapterType || currentAdapterTypeRef.current;
 
     const currentAdapterType = servicesRef.current?.orchestrationService.getCurrentAdapterType();
     if (servicesRef.current && currentAdapterType && currentAdapterType !== targetAdapterType) {
-      TTSServicesFactory.destroy(servicesRef.current);
+      destroyTTSServices(servicesRef.current);
       servicesRef.current = null;
     }
 
     if (!servicesRef.current) {
-      const handleStateChange = (ttsState: TtsState) => {
-        onStateChangeRef.current(ttsState);
-      };
-
-      const handleAdapterSwitch = (newAdapter: AdapterType) => {
-        onAdapterSwitchRef.current(newAdapter);
-      };
-
-      servicesRef.current = TTSServicesFactory.create(
-        targetAdapterType,
-        handleStateChange,
-        handleAdapterSwitch
-      );
+      servicesRef.current = createTTSServices(targetAdapterType);
       currentAdapterTypeRef.current = targetAdapterType;
     }
 
@@ -54,7 +42,7 @@ export function useServiceManager({ onStateChange, onAdapterSwitch }: UseService
 
   const cleanup = useCallback(() => {
     if (servicesRef.current) {
-      TTSServicesFactory.destroy(servicesRef.current);
+      destroyTTSServices(servicesRef.current);
       servicesRef.current = null;
     }
   }, []);

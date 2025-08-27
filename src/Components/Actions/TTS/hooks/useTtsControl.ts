@@ -1,16 +1,16 @@
 import { useCallback } from 'react';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
-import { TTSServiceDependencies } from '@/lib/factories/TTSServicesFactory';
-import { TtsReducerState } from '@/lib/ttsReducer';
+import { TTSServices } from '@/lib/factories/TTSServicesFactory';
+import { TtsState } from '@/lib/ttsReducer';
 import {
   setIsGenerating,
   setVoicesError
 } from '@/lib/ttsReducer';
 
 export interface UseTtsControlProps {
-  state: TtsReducerState;
-  getServices: (adapterType?: AdapterType) => TTSServiceDependencies;
-  dispatch: (action: any) => void;
+  state: TtsState;
+  getServices: (adapterType?: AdapterType) => TTSServices;
+  dispatch: (action: { type: string; payload?: unknown }) => void;
   onError?: (error: string) => void;
 }
 
@@ -21,7 +21,7 @@ export interface UseTtsControlProps {
 export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsControlProps) {
 
   const generateTts = useCallback(async () => {
-    if (!state.selectedVoice) {
+    if (!state.selectedVoiceId) {
       const errorMessage = 'Please select a voice';
       dispatch(setVoicesError(errorMessage));
       onError?.(errorMessage);
@@ -34,8 +34,8 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     try {
       const { orchestrationService, textExtractionService, voiceHandler } = getServices();
 
-      if (state.selectedVoice) {
-        await voiceHandler.setVoice(state.selectedVoice);
+      if (state.selectedVoiceId) {
+        await voiceHandler.setVoice(state.selectedVoiceId);
       }
 
       const chunks = await textExtractionService.extractTextChunks();
@@ -55,7 +55,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     } finally {
       dispatch(setIsGenerating(false));
     }
-  }, [state.selectedVoice, getServices, dispatch, onError]);
+  }, [state.selectedVoiceId, getServices, dispatch, onError]);
 
   const pause = useCallback(() => {
     const { orchestrationService } = getServices();

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { TTSAdapterFactory, AdapterType } from '@/lib/factories/AdapterFactory';
-import { TTSServiceDependencies } from '@/lib/factories/TTSServicesFactory';
-import { TtsReducerState } from '@/lib/ttsReducer';
+import { AdapterType, AVAILABLE_ADAPTERS } from '@/lib/factories/AdapterFactory';
+import { TTSServices } from '@/lib/factories/TTSServicesFactory';
+import { TtsState } from '@/lib/ttsReducer';
 import {
   setAvailableAdapters,
   setIsPlaying,
@@ -13,10 +13,9 @@ import {
 } from '@/lib/ttsReducer';
 
 export interface UseTtsInitializationProps {
-  state: TtsReducerState;
-  dispatch: (action: any) => void;
-  getServices: (adapterType?: AdapterType) => TTSServiceDependencies;
-  loadVoices: (adapterType?: AdapterType) => Promise<void>;
+  state: TtsState;
+  dispatch: (action: { type: string; payload?: unknown }) => void;
+  getServices: (adapterType?: AdapterType) => TTSServices;
   cleanup: () => void;
 }
 
@@ -24,14 +23,13 @@ export function useTtsInitialization({
   state,
   dispatch,
   getServices,
-  loadVoices,
   cleanup
 }: UseTtsInitializationProps) {
 
   const initializedRef = useRef(false);
 
   useEffect(() => {
-    dispatch(setAvailableAdapters(TTSAdapterFactory.getAvailableAdapters()));
+    dispatch(setAvailableAdapters(AVAILABLE_ADAPTERS));
   }, [dispatch]);
 
 
@@ -66,12 +64,13 @@ export function useTtsInitialization({
     };
 
     initializeOnce();
-  }, []);
+  }, [dispatch, getServices]);
 
   useEffect(() => {
     if (state.isRecreatingServices) {
+      cleanup();
     }
-  }, [state.isRecreatingServices]);
+  }, [state.isRecreatingServices, cleanup]);
 
   useEffect(() => {
     return () => {

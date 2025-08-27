@@ -10,7 +10,7 @@ import {
 
 export interface UseAdapterActionsProps {
   state: TtsReducerState;
-  dispatch: (action: any) => void;
+  dispatch: (action: { type: string; payload?: unknown }) => void;
   loadVoices: (adapterType?: AdapterType) => Promise<void>;
   cleanup: () => void;
   onError?: (error: string) => void;

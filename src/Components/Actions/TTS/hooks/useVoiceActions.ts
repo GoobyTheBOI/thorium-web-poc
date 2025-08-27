@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
-import { TTSServiceDependencies } from '@/lib/factories/TTSServicesFactory';
+import { TTSServices } from '@/lib/factories/TTSServicesFactory';
 import {
   startVoiceLoading,
   finishVoiceLoading,
@@ -10,8 +10,8 @@ import {
 } from '@/lib/ttsReducer';
 
 export interface UseVoiceActionsProps {
-  getServices: (adapterType?: AdapterType) => TTSServiceDependencies;
-  dispatch: (action: any) => void;
+  getServices: (adapterType?: AdapterType) => TTSServices;
+  dispatch: (action: { type: string; payload?: unknown }) => void;
   onError?: (error: string) => void;
 }
 
