@@ -1,6 +1,7 @@
 import React from 'react';
-import { Select } from './Select';
+import { Select } from '@/Components/UI/Select';
 import { VoiceInfo } from '@/preferences/types';
+import { getLanguageDisplay, getGenderDisplay } from '@/lib/constants/voiceConstants';
 
 interface VoiceSelectionProps {
     voices: VoiceInfo[];
@@ -42,36 +43,6 @@ export const VoiceSelection: React.FC<VoiceSelectionProps> = ({
             return acc;
         }, {} as GroupedVoices);
     }, [voices]);
-
-    // Helper to get gender emoji and label
-    const getGenderDisplay = (gender: string): { emoji: string; label: string } => {
-        switch (gender) {
-            case 'male':
-                return { emoji: '👨', label: 'Male' };
-            case 'female':
-                return { emoji: '👩', label: 'Female' };
-            case 'neutral':
-                return { emoji: '🔄', label: 'Neutral' };
-            default:
-                return { emoji: '🎭', label: 'Other' };
-        }
-    };
-
-    // Helper to get language display name
-    const getLanguageDisplay = (languageCode: string): string => {
-        const languageNames: { [key: string]: string } = {
-            'nl': '🇳🇱 Dutch (Nederlands)',
-            'en': '🇺🇸 English',
-            'es': '🇪🇸 Spanish (Español)',
-            'fr': '🇫🇷 French (Français)',
-            'de': '🇩🇪 German (Deutsch)',
-            'it': '🇮🇹 Italian (Italiano)',
-            'pt': '🇵🇹 Portuguese (Português)',
-            'unknown': '🌐 Unknown Language'
-        };
-
-        return languageNames[languageCode.toLowerCase()] || `🌐 ${languageCode.toUpperCase()}`;
-    };
 
     if (loading) {
         return (

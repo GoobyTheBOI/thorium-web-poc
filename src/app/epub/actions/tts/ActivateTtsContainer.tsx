@@ -2,130 +2,48 @@
 
 import { useAppSelector, useAppDispatch, RootState } from "@edrlab/thorium-web/epub";
 import { TtsActionKeys } from "../../keys";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { ThContainerHeader, ThPopover, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
 import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
-import { TTSAdapterFactory, AdapterType } from "@/lib/factories/AdapterFactory";
-import { TtsState } from "@/lib/managers/TtsStateManager";
 import { KeyboardShortcut } from "@/lib/handlers/KeyboardHandler";
 import styles from "./ActivateTtsContainer.module.css";
 
-import { useTtsServices, useVoiceManagement, useAdapterManagement } from "../../../../Components/Actions/TTS/hooks";
+import { useTts } from "@/Components/Actions/TTS/hooks";
 import { TtsProviderSelector, TtsVoicePanel, TtsControlPanel, TtsStatusDisplay } from "../../../../Components/Actions/TTS";
 
 export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (props) => {
     const dispatch = useAppDispatch();
-
-    const [ttsState, setTtsState] = useState<TtsState>({
-        isPlaying: false,
-        isPaused: false,
-        isGenerating: false,
-        error: null,
-        currentAdapter: null
-    });
     const [keyboardShortcuts, setKeyboardShortcuts] = useState<KeyboardShortcut[]>([]);
 
     const isOpen = useAppSelector((state: RootState) => {
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
     });
 
-    // Custom hooks for business logic
-    const { getServices, cleanup } = useTtsServices({
-        onStateChange: (state) => {
-            setTtsState(state);
-            if (state.error) {
-                setVoicesError(state.error);
-            } else if (state.isPlaying || state.isGenerating) {
-                setVoicesError(null);
-            }
-        },
-        onAdapterSwitch: (adapter) => {
-            setSelectedAdapterType(adapter);
-            loadVoices(adapter);
-        }
-    });
+    const handleStateChange = useCallback((state: any) => {
+        console.log('TTS State changed:', state);
+    }, []);
 
-    const { voiceState, loadVoices, handleVoiceChange, setVoicesError } = useVoiceManagement({
-        getServices
-    });
+    const handleError = useCallback((error: string) => {
+        console.error('TTS Error:', error);
+    }, []);
 
-    const { adapterState, setSelectedAdapterType, setAvailableAdapters, handleAdapterChange } = useAdapterManagement({
-        loadVoices,
-        cleanup,
-        setVoicesError
+    const { ttsState, voiceState, adapterState, actions, cleanup, getKeyboardShortcuts } = useTts({
+        onStateChange: handleStateChange,
+        onError: handleError
     });
 
     useEffect(() => {
-        setAvailableAdapters(TTSAdapterFactory.getAvailableAdapters());
-    }, [setAvailableAdapters]);
-
-    useEffect(() => {
-        const services = getServices();
-        const initialState = services.orchestrationService.getState();
-        setTtsState(initialState);
-        setKeyboardShortcuts(services.keyboardHandler.getShortcuts());
-        loadVoices();
-    }, [getServices, loadVoices]);
-
-    useEffect(() => {
-        return () => {
-            cleanup();
-        };
-    }, [cleanup]);
-
-    const handleGenerateTts = useCallback(async () => {
-        if (!voiceState.selectedVoice) {
-            setVoicesError('Please select a voice');
-            return;
-        }
-
-        setTtsState(prev => ({ ...prev, isGenerating: true }));
-        setVoicesError(null);
-
         try {
-            const { orchestrationService, textExtractionService, voiceHandler } = getServices();
-
-            if (voiceState.selectedVoice) {
-                await voiceHandler.setVoice(voiceState.selectedVoice);
-            }
-
-            const chunks = await textExtractionService.extractTextChunks();
-            if (chunks.length === 0) {
-                setVoicesError('No text found to convert');
-                return;
-            }
-
-            await orchestrationService.startReading();
+            const shortcuts = getKeyboardShortcuts();
+            setKeyboardShortcuts(shortcuts);
         } catch (error) {
-            console.error('Error generating TTS:', error);
-            setVoicesError('Failed to generate audio');
-        } finally {
-            setTtsState(prev => ({ ...prev, isGenerating: false }));
+            console.error('Failed to get keyboard shortcuts:', error);
+            setKeyboardShortcuts([]);
         }
-    }, [voiceState.selectedVoice, getServices, setVoicesError]);
-
-    const handleStop = useCallback(() => {
-        const { orchestrationService } = getServices();
-        orchestrationService.stopReading();
-    }, [getServices]);
-
-    const handlePause = useCallback(() => {
-        const { orchestrationService } = getServices();
-        if (ttsState.isPlaying && !ttsState.isPaused) {
-            orchestrationService.pauseReading();
-        }
-    }, [getServices, ttsState]);
-
-    const handleResume = useCallback(() => {
-        const { orchestrationService } = getServices();
-        if (!ttsState.isPlaying && ttsState.isPaused) {
-            orchestrationService.resumeReading();
-        }
-    }, [getServices, ttsState]);
+    }, [getKeyboardShortcuts]);
 
     const handleClose = useCallback(() => {
-        const { orchestrationService } = getServices();
-        orchestrationService.stopReading();
+        actions.stop();
         cleanup();
         dispatch({
             type: "actions/setActionOpen",
@@ -134,7 +52,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 isOpen: false
             }
         });
-    }, [getServices, cleanup, dispatch]);
+    }, [actions, cleanup, dispatch]);
 
     if (!isOpen) return null;
 
@@ -157,7 +75,10 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
 
             <ThContainerBody>
                 <TtsStatusDisplay
-                    ttsState={ttsState}
+                    ttsState={{
+                        ...ttsState,
+                        currentAdapter: adapterState.selectedAdapterType
+                    }}
                     voicesError={voiceState.voicesError}
                     keyboardShortcuts={keyboardShortcuts}
                 />
@@ -168,7 +89,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     isRecreatingServices={adapterState.isRecreatingServices}
                     isGenerating={ttsState.isGenerating}
                     isPlaying={ttsState.isPlaying}
-                    onAdapterChange={handleAdapterChange}
+                    onAdapterChange={actions.changeAdapter}
                 />
 
                 <TtsVoicePanel
@@ -178,16 +99,19 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     voicesError={voiceState.voicesError}
                     isGenerating={ttsState.isGenerating}
                     isPlaying={ttsState.isPlaying}
-                    onVoiceChange={handleVoiceChange}
+                    onVoiceChange={actions.changeVoice}
                 />
 
                 <TtsControlPanel
-                    ttsState={ttsState}
+                    ttsState={{
+                        ...ttsState,
+                        currentAdapter: adapterState.selectedAdapterType
+                    }}
                     selectedVoice={voiceState.selectedVoice}
-                    onGenerateTts={handleGenerateTts}
-                    onPause={handlePause}
-                    onResume={handleResume}
-                    onStop={handleStop}
+                    onGenerateTts={actions.generateTts}
+                    onPause={actions.pause}
+                    onResume={actions.resume}
+                    onStop={actions.stop}
                 />
             </ThContainerBody>
         </ThPopover>
