@@ -1,26 +1,21 @@
-import { TTSServicesFactory, TTSServiceDependencies } from '../../lib/factories/TTSServicesFactory';
-import { AdapterType, TTSAdapterFactory } from '../../lib/factories/AdapterFactory';
+import { createTTSServices, destroyTTSServices, TTSServices } from '../../lib/factories/TTSServicesFactory';
+import { AdapterType, createAdapter } from '../../lib/factories/AdapterFactory';
 import { TtsState } from '../../lib/managers/TtsStateManager';
+import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
 
 describe('TTSServicesFactory', () => {
     const mockOnStateChange = jest.fn<void, [TtsState]>();
     const mockOnAdapterSwitch = jest.fn<void, [AdapterType]>();
-    let adapterFactory: TTSAdapterFactory;
+    let voiceManagementService: VoiceManagementService;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        adapterFactory = new TTSAdapterFactory();
+        voiceManagementService = new VoiceManagementService();
     });
 
     describe('Service Creation', () => {
         test('creates all required services', () => {
-            const adapter = adapterFactory.createAdapter('azure');
-            const services = TTSServicesFactory.create(
-                adapter,
-                'azure',
-                mockOnStateChange,
-                mockOnAdapterSwitch
-            );
+            const services = createTTSServices('azure');
 
             expect(services).toHaveProperty('textExtractionService');
             expect(services).toHaveProperty('voiceManagementService');
@@ -36,45 +31,26 @@ describe('TTSServicesFactory', () => {
             expect(services.keyboardHandler).toBeDefined();
             expect(services.voiceHandler).toBeDefined();
             expect(services.currentAdapter).toBeDefined();
-            expect(services.currentAdapter).toBe(adapter);
         });
 
         test('creates services for different adapter types', () => {
-            const azureAdapter = adapterFactory.createAdapter('azure');
-            const azureServices = TTSServicesFactory.create(
-                azureAdapter,
-                'azure',
-                mockOnStateChange
-            );
-
-            const elevenLabsAdapter = adapterFactory.createAdapter('elevenlabs');
-            const elevenLabsServices = TTSServicesFactory.create(
-                elevenLabsAdapter,
-                'elevenlabs',
-                mockOnStateChange
-            );
+            const azureServices = createTTSServices('azure');
+            const elevenLabsServices = createTTSServices('elevenlabs');
 
             expect(azureServices.currentAdapter).toBeDefined();
             expect(elevenLabsServices.currentAdapter).toBeDefined();
 
             // Should have different adapter instances
             expect(azureServices.currentAdapter).not.toBe(elevenLabsServices.currentAdapter);
-            expect(azureServices.currentAdapter).toBe(azureAdapter);
-            expect(elevenLabsServices.currentAdapter).toBe(elevenLabsAdapter);
         });
     });
 
     describe('Service Destruction', () => {
         test('destroy method completes without throwing', () => {
-            const adapter = adapterFactory.createAdapter('azure');
-            const services = TTSServicesFactory.create(
-                adapter,
-                'azure',
-                mockOnStateChange
-            );
+            const services = createTTSServices('azure');
 
             // Should not throw
-            expect(() => TTSServicesFactory.destroy(services)).not.toThrow();
+            expect(() => destroyTTSServices(services)).not.toThrow();
         });
 
         test('handles undefined services gracefully', () => {
@@ -88,23 +64,18 @@ describe('TTSServicesFactory', () => {
             } as any;
 
             // Should not throw
-            expect(() => TTSServicesFactory.destroy(partialServices)).not.toThrow();
+            expect(() => destroyTTSServices(partialServices)).not.toThrow();
         });
     });
 
     describe('Factory Pattern Implementation', () => {
-        test('factory methods are static', () => {
-            expect(typeof TTSServicesFactory.create).toBe('function');
-            expect(typeof TTSServicesFactory.destroy).toBe('function');
+        test('factory methods are functions', () => {
+            expect(typeof createTTSServices).toBe('function');
+            expect(typeof destroyTTSServices).toBe('function');
         });
 
         test('create method returns object with correct structure', () => {
-            const adapter = adapterFactory.createAdapter('azure');
-            const services = TTSServicesFactory.create(
-                adapter,
-                'azure',
-                mockOnStateChange
-            );
+            const services = createTTSServices('azure');
 
             expect(services).toEqual({
                 textExtractionService: expect.any(Object),
@@ -117,18 +88,8 @@ describe('TTSServicesFactory', () => {
         });
 
         test('each call to create returns new instances', () => {
-            const adapter1 = adapterFactory.createAdapter('azure');
-            const services1 = TTSServicesFactory.create(
-                adapter1,
-                'azure',
-                mockOnStateChange
-            );
-            const adapter2 = adapterFactory.createAdapter('azure');
-            const services2 = TTSServicesFactory.create(
-                adapter2,
-                'azure',
-                mockOnStateChange
-            );
+            const services1 = createTTSServices('azure');
+            const services2 = createTTSServices('azure');
 
             expect(services1.orchestrationService).not.toBe(services2.orchestrationService);
             expect(services1.voiceManagementService).not.toBe(services2.voiceManagementService);
@@ -136,15 +97,9 @@ describe('TTSServicesFactory', () => {
             expect(services1.keyboardHandler).not.toBe(services2.keyboardHandler);
         });
 
-        test('passes callbacks correctly', () => {
-            // This should not throw and callbacks should be wired up
-            const adapter = adapterFactory.createAdapter('azure');
-            const services = TTSServicesFactory.create(
-                adapter,
-                'azure',
-                mockOnStateChange,
-                mockOnAdapterSwitch
-            );
+        test('passes configuration correctly', () => {
+            // This should not throw and services should be properly configured
+            const services = createTTSServices('azure');
 
             expect(services.orchestrationService).toBeDefined();
             expect(services.voiceHandler).toBeDefined();

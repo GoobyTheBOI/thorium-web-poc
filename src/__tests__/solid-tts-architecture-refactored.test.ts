@@ -1,4 +1,4 @@
-import { TTSAdapterFactory } from '../lib/factories/AdapterFactory';
+import { createAdapter, AVAILABLE_ADAPTERS } from '../lib/factories/AdapterFactory';
 import { VoiceManagementService } from '../lib/services/VoiceManagementService';
 import { EpubTextExtractionService } from '../lib/services/TextExtractionService';
 import { KeyboardHandler } from '../lib/handlers/KeyboardHandler';
@@ -35,10 +35,10 @@ describe('SOLID TTS Architecture - Basic Tests', () => {
   });
 
   test('TTS Adapter Factory creates adapters', () => {
-    const factory = new TTSAdapterFactory();
+    const voiceService = new VoiceManagementService();
 
-    expect(() => factory.createAdapter('elevenlabs')).not.toThrow();
-    expect(() => factory.createAdapter('azure')).not.toThrow();
+    expect(() => createAdapter('elevenlabs', voiceService)).not.toThrow();
+    expect(() => createAdapter('azure', voiceService)).not.toThrow();
   });
 
   test('Voice Management Service exists', () => {
@@ -52,10 +52,10 @@ describe('SOLID TTS Architecture - Basic Tests', () => {
   });
 
   test('Available adapters can be retrieved', () => {
-    const adapters = TTSAdapterFactory.getAvailableAdapters();
+    const adapters = AVAILABLE_ADAPTERS;
     expect(adapters.length).toBeGreaterThan(0);
 
-    const implemented = TTSAdapterFactory.getImplementedAdapters();
+    const implemented = AVAILABLE_ADAPTERS.filter(adapter => adapter.isImplemented);
     expect(implemented.length).toBeGreaterThan(0);
   });
 });
