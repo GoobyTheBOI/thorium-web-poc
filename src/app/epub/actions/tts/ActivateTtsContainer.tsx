@@ -122,16 +122,19 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
     // Service references (SOLID: Dependency Inversion)
     const servicesRef = useRef<TTSServiceDependencies | null>(null);
     const loadVoicesRef = useRef<((adapterType?: AdapterType) => Promise<void>) | null>(null);
+    const currentAdapterTypeRef = useRef<AdapterType>(selectedAdapterType);
 
     const isOpen = useAppSelector((state: RootState) => {
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
     });
 
     // SOLID: Service creation with adapter selection
-    const getServices = useCallback((adapterType: AdapterType = selectedAdapterType): TTSServiceDependencies => {
+    const getServices = useCallback((adapterType?: AdapterType): TTSServiceDependencies => {
+        const targetAdapterType = adapterType || currentAdapterTypeRef.current;
+        
         // If services exist for a different adapter type, clean them up first
         const currentAdapterType = servicesRef.current?.orchestrationService.getCurrentAdapterType();
-        if (servicesRef.current && currentAdapterType && currentAdapterType !== adapterType) {
+        if (servicesRef.current && currentAdapterType && currentAdapterType !== targetAdapterType) {
             console.log('Cleaning up existing services before creating new ones');
             servicesRef.current.orchestrationService.destroy();
             servicesRef.current.keyboardHandler.cleanup();
@@ -140,7 +143,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         }
 
         if (!servicesRef.current) {
-            console.log('Creating new TTS services for adapter:', adapterType);
+            console.log('Creating new TTS services for adapter:', targetAdapterType);
 
             const handleStateChange = (state: TtsState) => {
                 setTtsState(state);
@@ -159,7 +162,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 }
             };
 
-            servicesRef.current = createTTSServices(adapterType, handleStateChange, handleAdapterSwitch);
+            servicesRef.current = createTTSServices(targetAdapterType, handleStateChange, handleAdapterSwitch);
 
             // Get initial state
             const initialState = servicesRef.current.orchestrationService.getState();
@@ -220,7 +223,8 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             // Clear services ref to force recreation
             servicesRef.current = null;
 
-            // Update adapter type (this will trigger service recreation in getServices)
+            // Update adapter type immediately in ref and state
+            currentAdapterTypeRef.current = newAdapterType;
             setSelectedAdapterType(newAdapterType);
 
             // Reset states
