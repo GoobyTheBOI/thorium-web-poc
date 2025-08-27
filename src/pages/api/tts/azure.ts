@@ -61,9 +61,6 @@ export default async function handler(
 
             console.log('Processed Text:', processedText);
 
-
-
-
             // Perform speech synthesis
             const result = await new Promise<SpeechSynthesisResult>((resolve, reject) => {
                 speechSynthesizer.speakSsmlAsync(

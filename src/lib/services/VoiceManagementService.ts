@@ -4,6 +4,7 @@ import { VoiceInfo } from "@/preferences/types";
 export interface IVoiceManagementService {
     loadRediumVoices(): Promise<IVoices[]>;
     loadElevenLabsVoices(): Promise<VoiceInfo[]>;
+    loadAzureVoices(): Promise<VoiceInfo[]>;
     selectVoice(voiceId: string): void;
     getSelectedVoice(): string | null;
     getVoicesByGender(gender: 'male' | 'female'): Promise<VoiceInfo[]>;
@@ -13,6 +14,7 @@ export interface IVoiceManagementService {
 export class VoiceManagementService implements IVoiceManagementService {
     private selectedVoice: string | null = null;
     private elevenLabsVoices: VoiceInfo[] = [];
+    private azureVoices: VoiceInfo[] = [];
 
     async loadRediumVoices(): Promise<IVoices[]> {
         try {
@@ -50,12 +52,34 @@ export class VoiceManagementService implements IVoiceManagementService {
         }
     }
 
+    async loadAzureVoices(): Promise<VoiceInfo[]> {
+        try {
+            const response = await fetch('/api/tts/azure/voices');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch Azure voices');
+            }
+
+            this.azureVoices = data;
+            return this.azureVoices;
+        } catch (error) {
+            console.error('Failed to load Azure voices:', error);
+            throw error;
+        }
+    }
+
     async getVoicesByGender(gender: 'male' | 'female'): Promise<VoiceInfo[]> {
+        // Combine both ElevenLabs and Azure voices
         if (this.elevenLabsVoices.length === 0) {
             await this.loadElevenLabsVoices();
         }
+        if (this.azureVoices.length === 0) {
+            await this.loadAzureVoices();
+        }
 
-        return this.elevenLabsVoices.filter(voice => voice.gender === gender);
+        const allVoices = [...this.elevenLabsVoices, ...this.azureVoices];
+        return allVoices.filter(voice => voice.gender === gender);
     }
 
     async getCurrentVoiceGender(): Promise<'male' | 'female' | 'neutral' | null> {
@@ -63,11 +87,16 @@ export class VoiceManagementService implements IVoiceManagementService {
             return null;
         }
 
+        // Check both ElevenLabs and Azure voices
         if (this.elevenLabsVoices.length === 0) {
             await this.loadElevenLabsVoices();
         }
+        if (this.azureVoices.length === 0) {
+            await this.loadAzureVoices();
+        }
 
-        const voice = this.elevenLabsVoices.find(v => v.id === this.selectedVoice);
+        const allVoices = [...this.elevenLabsVoices, ...this.azureVoices];
+        const voice = allVoices.find(v => v.id === this.selectedVoice);
         return voice?.gender || null;
     }
 

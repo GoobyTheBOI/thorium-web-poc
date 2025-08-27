@@ -1,5 +1,13 @@
-import { IAdapterConfig, IPlaybackAdapter, ITextProcessor, ITTSError } from "@/preferences/types";
-import { TextChunk } from "@/types/tts";
+import {
+    IAdapterConfig,
+    IPlaybackAdapter,
+    ITextProcessor,
+    ITTSError,
+    IVoiceProvider,
+    VoiceInfo
+} from "../../preferences/types";
+import { TextChunk } from "../../types/tts";
+import { VoiceManagementService } from "../services/VoiceManagementService";
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -15,21 +23,57 @@ interface PlayResult {
 export class AzureAdapter implements IPlaybackAdapter {
     private readonly config: IAdapterConfig = {
         apiKey: process.env.AZURE_API_KEY || '',
-        voiceId: 'en-US-Adam:DragonHDLatestNeural',
+        voiceId: 'en-US-AriaNeural',
         modelId: 'neural'
     };
     private readonly textProcessor: ITextProcessor;
     private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
+    private readonly voiceService: VoiceManagementService;
 
     // Audio state management
     private currentAudio: HTMLAudioElement | null = null;
     private isPlaying: boolean = false;
     private isPaused: boolean = false;
 
+    public readonly voices: IVoiceProvider;
+
     constructor(
         textProcessor: ITextProcessor,
     ) {
         this.textProcessor = textProcessor;
+        this.voiceService = new VoiceManagementService();
+
+        this.voices = {
+            getVoices: () => this.getVoices(),
+            setVoice: (voiceId: string) => this.setVoice(voiceId),
+            getVoicesByGender: (gender: 'male' | 'female') => this.getVoicesByGender(gender),
+            getCurrentVoiceGender: () => this.getCurrentVoiceGender()
+        };
+    }
+
+    private async getVoices(): Promise<VoiceInfo[]> {
+        return await this.voiceService.loadAzureVoices();
+    }
+
+    private async setVoice(voiceId: string): Promise<void> {
+        this.voiceService.selectVoice(voiceId);
+        this.config.voiceId = voiceId;
+    }
+
+    private async getVoicesByGender(gender: 'male' | 'female'): Promise<VoiceInfo[]> {
+        const allVoices = await this.voiceService.loadAzureVoices();
+        return allVoices.filter(voice => voice.gender === gender);
+    }
+
+    private async getCurrentVoiceGender(): Promise<'male' | 'female' | 'neutral' | null> {
+        const selectedVoice = this.voiceService.getSelectedVoice();
+        if (!selectedVoice) {
+            return null;
+        }
+
+        const allVoices = await this.voiceService.loadAzureVoices();
+        const voice = allVoices.find(v => v.id === selectedVoice);
+        return voice?.gender || null;
     }
 
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
@@ -55,16 +99,12 @@ export class AzureAdapter implements IPlaybackAdapter {
 
     private async executePlayRequest(config: PlayRequestConfig): Promise<PlayResult> {
             try {
-                // Clean up any existing audio first
                 this.cleanup();
 
-                // Make API request
                 const response = await this.makeApiRequest(config);
 
-                // Process response
                 const { audioBlob, requestId } = await this.processApiResponse(response);
 
-                // Setup and start audio playback
                 const audio = await this.setupAudioPlayback(audioBlob);
 
                 return { requestId, audio };
@@ -106,10 +146,8 @@ export class AzureAdapter implements IPlaybackAdapter {
         const audioUrl = URL.createObjectURL(audioBlob);
         this.currentAudio = new Audio(audioUrl);
 
-        // Set up audio event listeners
         this.setupAudioEvents();
 
-        // Start playback
         await this.currentAudio.play();
         this.updatePlaybackState(true, false);
 

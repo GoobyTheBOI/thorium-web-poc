@@ -64,11 +64,19 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
     }
 
     private async getVoicesByGender(gender: 'male' | 'female'): Promise<VoiceInfo[]> {
-        return await this.voiceService.getVoicesByGender(gender);
+        const allVoices = await this.voiceService.loadElevenLabsVoices();
+        return allVoices.filter(voice => voice.gender === gender);
     }
 
     private async getCurrentVoiceGender(): Promise<'male' | 'female' | 'neutral' | null> {
-        return await this.voiceService.getCurrentVoiceGender();
+        const selectedVoice = this.voiceService.getSelectedVoice();
+        if (!selectedVoice) {
+            return null;
+        }
+
+        const allVoices = await this.voiceService.loadElevenLabsVoices();
+        const voice = allVoices.find(v => v.id === selectedVoice);
+        return voice?.gender || null;
     }
 
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {

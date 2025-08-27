@@ -37,12 +37,13 @@ interface TTSServiceDependencies {
 }
 
 const createTTSServices = (
-    adapterType: AdapterType = 'elevenlabs',
-    onStateChange?: (state: TtsState) => void,
-    onAdapterSwitch?: (newAdapter: AdapterType) => void
+    adapterType: AdapterType,
+    onStateChange: (state: TtsState) => void,
+    onAdapterSwitch?: (adapter: AdapterType) => void
 ): TTSServiceDependencies => {
     const adapterFactory = new TTSAdapterFactory();
-    const adapter: IPlaybackAdapter = adapterFactory.createAdapter(adapterType);
+    const adapter = adapterFactory.createAdapter(adapterType);
+
     const textExtractionService = new EpubTextExtractionService();
     const voiceManagementService = new VoiceManagementService();
 
@@ -66,7 +67,6 @@ const createTTSServices = (
 
     const keyboardHandler = new TtsKeyboardHandler(orchestrationService);
 
-    // Create voice handler with callbacks
     const voiceCallbacks: VoiceChangeCallback = {
         onVoiceChanged: (voiceId: string, voiceInfo?: VoiceInfo) => {
             console.log(`Voice changed to: ${voiceId}`, voiceInfo);
@@ -226,8 +226,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             // Reset states
             setSelectedVoice(null);
 
-            // Load voices for new adapter
-            await loadVoices();
+            await loadVoices(newAdapterType);
 
         } catch (error) {
             console.error('Error changing adapter:', error);
