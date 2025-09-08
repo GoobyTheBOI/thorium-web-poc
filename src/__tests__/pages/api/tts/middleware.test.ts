@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { TEST_CONFIG, createTestUrl } from '../../../config/testConstants';
+import { TEST_CONFIG, createTestUrl } from '../../../../lib/constants/testConstants';
 
 // Mock URL constructor for tests
 global.URL = jest.fn((url) => ({

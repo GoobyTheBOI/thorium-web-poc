@@ -27,7 +27,7 @@ describe('AzureAdapter', () => {
     mockConfig = {
       apiKey: 'test-azure-key',
       region: 'test-region',
-      voiceId: 'en-US-AriaNeural',
+      voiceId: 'en-US-Adam:DragonHDLatestNeural',
       language: 'en-US'
     };
 

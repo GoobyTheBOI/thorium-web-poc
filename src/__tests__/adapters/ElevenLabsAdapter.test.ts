@@ -1,5 +1,5 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
-import { TEST_CONFIG } from '../config/testConstants';
+import { TEST_CONFIG } from '../../lib/constants/testConstants';
 
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
   ElevenLabsApi: jest.fn().mockImplementation(() => ({

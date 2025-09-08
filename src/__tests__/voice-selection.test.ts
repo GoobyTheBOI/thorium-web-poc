@@ -1,20 +1,7 @@
 import { ElevenLabsAdapter } from '@/lib/adapters/ElevenLabsAdapter';
 import { DefaultTextProcessor } from '@/lib/TextProcessor';
 import { VoiceInfo } from '@/preferences/types';
-import { TEST_CONFIG } from './config/testConstants';
-
-// Mock VoiceManagementService
-jest.mock('@/lib/services/VoiceManagementService', () => {
-    return {
-        VoiceManagementService: jest.fn().mockImplementation(() => ({
-            loadElevenLabsVoices: jest.fn(),
-            selectVoice: jest.fn(),
-            getSelectedVoice: jest.fn(),
-            getVoicesByGender: jest.fn(),
-            getCurrentVoiceGender: jest.fn()
-        }))
-    };
-});
+import { TEST_CONFIG } from '../lib/constants/testConstants';
 
 // Mock de fetch functie
 const mockFetch = jest.fn();
@@ -27,10 +14,17 @@ describe('ElevenLabsAdapter Voice Selection', () => {
 
     beforeEach(() => {
         textProcessor = new DefaultTextProcessor();
-        adapter = new ElevenLabsAdapter(textProcessor);
 
-        // Get mock voice service instance
-        mockVoiceService = (adapter as any).voiceService;
+        // Create mock voice service
+        mockVoiceService = {
+            loadElevenLabsVoices: jest.fn(),
+            selectVoice: jest.fn(),
+            getSelectedVoice: jest.fn(),
+            getVoicesByGender: jest.fn(),
+            getCurrentVoiceGender: jest.fn()
+        };
+
+        adapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
 
         // Reset alle mocks
         jest.clearAllMocks();
@@ -46,29 +40,26 @@ describe('ElevenLabsAdapter Voice Selection', () => {
                 id: 'EXAVITQu4vr4xnSDxMaL',
                 name: 'Dutch Female Professional 1',
                 language: 'nl-NL',
-                gender: 'female',
-                quality: 'premium'
+                gender: 'female'
             },
             {
                 id: 'MF3mGyEYCmosw6y6VdL4',
                 name: 'Dutch Male Professional 1',
                 language: 'nl-NL',
-                gender: 'male',
-                quality: 'premium'
+                gender: 'male'
             },
             {
                 id: 'pNInz6obpgDQGcFmaJgB',
                 name: 'Dutch Female Professional 2',
                 language: 'nl-NL',
-                gender: 'female',
-                quality: 'premium'
+                gender: 'female'
             }
         ];
 
         it('should fetch Dutch voices from API', async () => {
             mockVoiceService.loadElevenLabsVoices.mockResolvedValue(mockVoices);
 
-            const voices = await adapter.getVoices();
+            const voices = await adapter.voices.getVoices();
 
             expect(mockVoiceService.loadElevenLabsVoices).toHaveBeenCalled();
             expect(voices).toEqual(mockVoices);
@@ -76,21 +67,21 @@ describe('ElevenLabsAdapter Voice Selection', () => {
 
         it('should filter voices by gender (male)', async () => {
             const maleVoices = mockVoices.filter(v => v.gender === 'male');
-            mockVoiceService.getVoicesByGender.mockResolvedValue(maleVoices);
+            mockVoiceService.loadElevenLabsVoices.mockResolvedValue(mockVoices);
 
-            const result = await adapter.getVoicesByGender('male');
+            const result = await adapter.voices.getVoicesByGender!('male');
 
-            expect(mockVoiceService.getVoicesByGender).toHaveBeenCalledWith('male');
+            expect(mockVoiceService.loadElevenLabsVoices).toHaveBeenCalled();
             expect(result).toEqual(maleVoices);
         });
 
         it('should filter voices by gender (female)', async () => {
             const femaleVoices = mockVoices.filter(v => v.gender === 'female');
-            mockVoiceService.getVoicesByGender.mockResolvedValue(femaleVoices);
+            mockVoiceService.loadElevenLabsVoices.mockResolvedValue(mockVoices);
 
-            const result = await adapter.getVoicesByGender('female');
+            const result = await adapter.voices.getVoicesByGender!('female');
 
-            expect(mockVoiceService.getVoicesByGender).toHaveBeenCalledWith('female');
+            expect(mockVoiceService.loadElevenLabsVoices).toHaveBeenCalled();
             expect(result).toEqual(femaleVoices);
         });
 
@@ -99,24 +90,27 @@ describe('ElevenLabsAdapter Voice Selection', () => {
 
             mockVoiceService.selectVoice.mockResolvedValue(undefined);
 
-            await adapter.setVoice(voiceId);
+            await adapter.voices.setVoice(voiceId);
 
             expect(mockVoiceService.selectVoice).toHaveBeenCalledWith(voiceId);
         });
 
         it('should get current voice gender', async () => {
-            mockVoiceService.getCurrentVoiceGender.mockResolvedValue('female');
+            const selectedVoiceId = 'EXAVITQu4vr4xnSDxMaL';
+            mockVoiceService.getSelectedVoice.mockReturnValue(selectedVoiceId);
+            mockVoiceService.loadElevenLabsVoices.mockResolvedValue(mockVoices);
 
-            const gender = await adapter.getCurrentVoiceGender();
+            const gender = await adapter.voices.getCurrentVoiceGender!();
 
             expect(gender).toBe('female');
-            expect(mockVoiceService.getCurrentVoiceGender).toHaveBeenCalled();
+            expect(mockVoiceService.getSelectedVoice).toHaveBeenCalled();
+            expect(mockVoiceService.loadElevenLabsVoices).toHaveBeenCalled();
         });
 
         it('should handle API errors gracefully', async () => {
             mockVoiceService.loadElevenLabsVoices.mockRejectedValue(new Error('API Error'));
 
-            await expect(adapter.getVoices()).rejects.toThrow('API Error');
+            await expect(adapter.voices.getVoices()).rejects.toThrow('API Error');
         });
 
         it('should use default Dutch female voice on initialization', () => {
@@ -152,7 +146,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
             } as any);
 
             // Stel mannelijke stem in
-            await adapter.setVoice(maleVoiceId);
+            await adapter.voices.setVoice(maleVoiceId);
             await adapter.play({ text: 'Mannelijke test tekst', element: 'normal' });
 
             // Controleer dat de juiste voiceId wordt gebruikt
@@ -163,7 +157,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
             );
 
             // Verander naar vrouwelijke stem
-            await adapter.setVoice(femaleVoiceId);
+            await adapter.voices.setVoice(femaleVoiceId);
             await adapter.play({ text: 'Vrouwelijke test tekst', element: 'normal' });
 
             // Controleer dat vrouwelijke stem wordt gebruikt

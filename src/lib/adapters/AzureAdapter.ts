@@ -23,7 +23,7 @@ interface PlayResult {
 export class AzureAdapter implements IPlaybackAdapter {
     private readonly config: IAdapterConfig = {
         apiKey: process.env.AZURE_API_KEY || '',
-        voiceId: 'en-US-AriaNeural',
+        voiceId: 'en-US-Adam:DragonHDLatestNeural',
         modelId: 'neural'
     };
     private readonly textProcessor: ITextProcessor;

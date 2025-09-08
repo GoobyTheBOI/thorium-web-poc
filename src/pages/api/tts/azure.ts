@@ -43,7 +43,7 @@ export default async function handler(
         );
 
         // Set the voice name (use voiceId if provided, otherwise default)
-        const azureVoiceName = voiceId || process.env.AZURE_VOICE_NAME || 'en-US-AriaNeural';
+        const azureVoiceName = voiceId || process.env.AZURE_VOICE_NAME || 'en-US-Adam:DragonHDLatestNeural';
         speechConfig.speechSynthesisVoiceName = azureVoiceName;
 
         // Set output format to MP3 for web compatibility

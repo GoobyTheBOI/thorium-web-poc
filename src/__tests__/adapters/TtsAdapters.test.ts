@@ -18,7 +18,7 @@ jest.mock('@elevenlabs/elevenlabs-js', () => ({
 jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
   SpeechConfig: {
     fromSubscription: jest.fn().mockReturnValue({
-      speechSynthesisVoiceName: 'en-US-AriaNeural',
+      speechSynthesisVoiceName: 'en-US-Adam:DragonHDLatestNeural',
       speechSynthesisOutputFormat: 24,
     }),
   },

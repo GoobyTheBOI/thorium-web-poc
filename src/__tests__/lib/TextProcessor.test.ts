@@ -1,6 +1,6 @@
 import { DefaultTextProcessor } from '../../lib/TextProcessor';
 import { TTS_CONSTANTS } from '../../types/tts';
-import { TEST_CONFIG } from '../config/testConstants';
+import { TEST_CONFIG } from '../../lib/constants/testConstants';
 
 describe('DefaultTextProcessor - SOLID Architecture', () => {
   let processor: DefaultTextProcessor;
