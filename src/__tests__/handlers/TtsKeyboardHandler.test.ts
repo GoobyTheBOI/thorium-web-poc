@@ -425,8 +425,8 @@ describe('TtsKeyboardHandler', () => {
       // Create new handler with partially undefined service
       const partialService = {
         ...mockOrchestrationService,
-        isPlaying: undefined as any,
-      };
+        isPlaying: undefined,
+      } as unknown as typeof mockOrchestrationService;
 
       expect(() => new TtsKeyboardHandler(partialService)).not.toThrow();
     });

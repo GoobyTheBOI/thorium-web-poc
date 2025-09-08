@@ -98,7 +98,7 @@ describe('VoiceHandler', () => {
     });
 
     it('should handle null voices from adapter', async () => {
-      mockVoiceProvider.getVoices.mockResolvedValue(null as any);
+      mockVoiceProvider.getVoices.mockResolvedValue(null as unknown as VoiceInfo[]);
 
       await expect(voiceHandler.loadVoices()).rejects.toThrow('No voices available from adapter');
       expect(mockCallbacks.onVoiceError).toHaveBeenCalledWith('No voices available from adapter', 'unknown');

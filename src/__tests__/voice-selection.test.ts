@@ -10,7 +10,7 @@ global.fetch = mockFetch;
 describe('ElevenLabsAdapter Voice Selection', () => {
     let adapter: ElevenLabsAdapter;
     let textProcessor: DefaultTextProcessor;
-    let mockVoiceService: any;
+    let mockVoiceService: unknown;
 
     beforeEach(() => {
         textProcessor = new DefaultTextProcessor();
@@ -143,7 +143,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
                 ok: true,
                 blob: () => Promise.resolve(new Blob([], { type: 'audio/mpeg' })),
                 headers: { get: () => 'test-request-id' }
-            } as any);
+            } as unknown);
 
             // Stel mannelijke stem in
             await adapter.voices.setVoice(maleVoiceId);

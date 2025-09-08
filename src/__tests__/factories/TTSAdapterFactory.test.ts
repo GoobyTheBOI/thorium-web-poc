@@ -9,17 +9,21 @@ jest.mock('@/lib/adapters/AzureAdapter');
 jest.mock('@/lib/services/VoiceManagementService');
 
 describe('AdapterFactory - SOLID Architecture', () => {
-  let mockVoiceService: any;
+  let mockVoiceService: VoiceManagementService;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     // Create mock voice service
     mockVoiceService = {
-      setVoice: jest.fn(),
-      getVoice: jest.fn(),
-      getVoices: jest.fn().mockResolvedValue([]),
-    };
+      loadRediumVoices: jest.fn().mockResolvedValue([]),
+      loadElevenLabsVoices: jest.fn().mockResolvedValue([]),
+      loadAzureVoices: jest.fn().mockResolvedValue([]),
+      selectVoice: jest.fn(),
+      getSelectedVoice: jest.fn().mockReturnValue(null),
+      getVoicesByGender: jest.fn().mockResolvedValue([]),
+      getCurrentVoiceGender: jest.fn().mockResolvedValue('neutral'),
+    } as unknown as VoiceManagementService;
 
     // Mock VoiceManagementService constructor
     (VoiceManagementService as jest.Mock).mockImplementation(() => mockVoiceService);
@@ -77,10 +81,10 @@ describe('AdapterFactory - SOLID Architecture', () => {
     });
 
     test('createAdapter handles null/undefined input gracefully', () => {
-      expect(() => createAdapter(null as any, mockVoiceService))
+      expect(() => createAdapter(null as unknown as AdapterType, mockVoiceService))
         .toThrow();
 
-      expect(() => createAdapter(undefined as any, mockVoiceService))
+      expect(() => createAdapter(undefined as unknown as AdapterType, mockVoiceService))
         .toThrow();
     });
   });
@@ -215,8 +219,8 @@ describe('AdapterFactory - SOLID Architecture', () => {
       const expectedMethods = ['play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off'];
 
       expectedMethods.forEach(method => {
-        expect(typeof (elevenlabsAdapter as any)[method]).toBe('function');
-        expect(typeof (azureAdapter as any)[method]).toBe('function');
+        expect(typeof (elevenlabsAdapter as unknown as Record<string, unknown>)[method]).toBe('function');
+        expect(typeof (azureAdapter as unknown as Record<string, unknown>)[method]).toBe('function');
       });
     });
   });
@@ -322,8 +326,8 @@ describe('AdapterFactory - SOLID Architecture', () => {
       const expectedMethods = ['play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off'];
 
       expectedMethods.forEach(method => {
-        expect(typeof (elevenlabsAdapter as any)[method]).toBe('function');
-        expect(typeof (azureAdapter as any)[method]).toBe('function');
+        expect(typeof (elevenlabsAdapter as unknown as Record<string, unknown>)[method]).toBe('function');
+        expect(typeof (azureAdapter as unknown as Record<string, unknown>)[method]).toBe('function');
       });
     });
 

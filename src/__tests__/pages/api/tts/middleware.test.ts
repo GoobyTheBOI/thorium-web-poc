@@ -7,7 +7,7 @@ global.URL = jest.fn((url) => ({
   origin: TEST_CONFIG.BASE_URL,
   pathname: url.replace(TEST_CONFIG.BASE_URL, ''),
   toString: () => url
-})) as any;
+})) as unknown;
 
 // Mock NextResponse before importing the middleware
 jest.mock('next/server', () => ({
@@ -40,7 +40,7 @@ import { TTSErrorResponse, TTSRequestBody } from '../../../../types/tts';
 describe('TTS API Middleware', () => {
   const createNextRequest = (url: string, options: {
     method: string;
-    body?: any;
+    body?: unknown;
     headers?: Record<string, string>;
   }) => {
     // Mock NextRequest without calling the actual constructor
@@ -57,10 +57,10 @@ describe('TTS API Middleware', () => {
       nextUrl: new URL(url),
     };
 
-    return mockRequest as any;
+    return mockRequest as unknown;
   };
 
-  const validateErrorResponse = (data: any): data is TTSErrorResponse => {
+  const validateErrorResponse = (data: unknown): data is TTSErrorResponse => {
     return (
       typeof data === 'object' &&
       data !== null &&
@@ -353,7 +353,8 @@ describe('TTS API Middleware', () => {
 
   describe('Configuration and Matcher Validation', () => {
     test('validates middleware matcher configuration', () => {
-      const { config } = require('../../../../pages/api/tts/middleware');
+      const { config } // eslint-disable-next-line @typescript-eslint/no-require-imports
+      = require('../../../../pages/api/tts/middleware');
 
       expect(config).toBeDefined();
       expect(config.matcher).toBe('/api/tts/:path*');

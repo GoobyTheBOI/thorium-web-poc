@@ -545,7 +545,9 @@ describe('/api/tts/elevenlabs/voices', () => {
     });
 
     it('should initialize ElevenLabs client with correct API key', async () => {
-      const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { ElevenLabsClient } // eslint-disable-next-line @typescript-eslint/no-require-imports
+      = require('@elevenlabs/elevenlabs-js');
 
       mockGetAll.mockResolvedValueOnce({ voices: [] });
 

@@ -316,7 +316,7 @@ describe('KeyboardHandler', () => {
     });
 
     it('should handle null target element', () => {
-      const event = createKeyboardEvent('a', false, false, false, null as any);
+      const event = createKeyboardEvent('a', false, false, false, null as unknown as Element);
       boundHandler(event);
 
       expect(shortcuts[0].action).toHaveBeenCalledTimes(1);
@@ -370,7 +370,7 @@ describe('KeyboardHandler', () => {
         { element: createMockElement('button'), shouldBlock: false },
       ];
 
-      testCases.forEach(({ element, shouldBlock }, index) => {
+      testCases.forEach(({ element, shouldBlock }) => {
         // Reset the mock
         (shortcuts[0].action as jest.Mock).mockClear();
 
@@ -386,7 +386,7 @@ describe('KeyboardHandler', () => {
     });
 
     it('should handle null element', () => {
-      const event = createKeyboardEvent('a', false, false, false, null as any);
+      const event = createKeyboardEvent('a', false, false, false, null as unknown as Element);
       boundHandler(event);
 
       expect(shortcuts[0].action).toHaveBeenCalledTimes(1);

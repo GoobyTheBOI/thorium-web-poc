@@ -1,6 +1,7 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
 import { DefaultTextProcessor } from '../../lib/TextProcessor';
+import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
 import type { ITextProcessor } from '../../preferences/types';
 import type { TextChunk } from '../../types/tts';
 
@@ -64,16 +65,28 @@ Object.defineProperty(window, 'AudioContext', {
 
 describe('TTS Adapters - SOLID Architecture', () => {
   let textProcessor: ITextProcessor;
+  let mockVoiceService: VoiceManagementService;
 
   beforeEach(() => {
     textProcessor = new DefaultTextProcessor();
+    
+    // Create mock voice service
+    mockVoiceService = {
+      loadRediumVoices: jest.fn().mockResolvedValue([]),
+      loadElevenLabsVoices: jest.fn().mockResolvedValue([]),
+      loadAzureVoices: jest.fn().mockResolvedValue([]),
+      selectVoice: jest.fn(),
+      getSelectedVoice: jest.fn().mockReturnValue(null),
+      getVoicesByGender: jest.fn().mockResolvedValue([]),
+      getCurrentVoiceGender: jest.fn().mockResolvedValue('neutral'),
+    } as unknown as VoiceManagementService;
   });
 
   describe('ElevenLabsAdapter', () => {
     let adapter: ElevenLabsAdapter;
 
     beforeEach(() => {
-      adapter = new ElevenLabsAdapter(textProcessor);
+      adapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
     });
 
     test('should create adapter instance with correct dependencies', () => {
@@ -144,7 +157,7 @@ describe('TTS Adapters - SOLID Architecture', () => {
     let adapter: AzureAdapter;
 
     beforeEach(() => {
-      adapter = new AzureAdapter(textProcessor);
+      adapter = new AzureAdapter(textProcessor, mockVoiceService);
     });
 
     test('should create adapter instance with correct dependencies', () => {
@@ -213,28 +226,28 @@ describe('TTS Adapters - SOLID Architecture', () => {
 
   describe('Adapter Interface Compliance', () => {
     test('both adapters implement the same IPlaybackAdapter interface', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       const expectedMethods = ['play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off'];
 
       expectedMethods.forEach(method => {
-        expect(typeof (elevenlabsAdapter as any)[method]).toBe('function');
-        expect(typeof (azureAdapter as any)[method]).toBe('function');
+        expect(typeof (elevenlabsAdapter as unknown as Record<string, unknown>)[method]).toBe('function');
+        expect(typeof (azureAdapter as unknown as Record<string, unknown>)[method]).toBe('function');
       });
     });
 
     test('adapters use dependency injection correctly', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       expect(elevenlabsAdapter).toBeDefined();
       expect(azureAdapter).toBeDefined();
     });
 
     test('adapters handle text processing consistently', async () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       const testChunk: TextChunk = {
         text: 'Test speech text',
@@ -246,13 +259,13 @@ describe('TTS Adapters - SOLID Architecture', () => {
       // Both adapters should call formatText
       try {
         await elevenlabsAdapter.play(testChunk);
-      } catch (error) {
+      } catch {
         // Expected to possibly fail in test environment
       }
 
       try {
         await azureAdapter.play(testChunk);
-      } catch (error) {
+      } catch {
         // Expected to possibly fail in test environment
       }
 
@@ -261,8 +274,8 @@ describe('TTS Adapters - SOLID Architecture', () => {
     });
 
     test('adapters follow Single Responsibility Principle', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       // Adapters should only handle playback, not text processing
       expect(elevenlabsAdapter).not.toHaveProperty('formatText');
@@ -276,8 +289,8 @@ describe('TTS Adapters - SOLID Architecture', () => {
 
   describe('Error Handling and Validation', () => {
     test('adapters handle empty text input gracefully', async () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       const emptyChunk: TextChunk = { text: '', element: 'paragraph' };
 
@@ -300,8 +313,8 @@ describe('TTS Adapters - SOLID Architecture', () => {
     });
 
     test('adapters maintain proper state after operations', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       // Test lifecycle methods
       expect(() => {
@@ -320,27 +333,27 @@ describe('TTS Adapters - SOLID Architecture', () => {
     });
 
     test('adapters handle invalid event listeners gracefully', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       const mockCallback = jest.fn();
 
       // Should handle invalid event types gracefully
       expect(() => {
-        (elevenlabsAdapter as any).on('invalidEvent', mockCallback);
-        (azureAdapter as any).on('invalidEvent', mockCallback);
+        (elevenlabsAdapter as { on: (event: string, callback: () => void) => void }).on('invalidEvent', mockCallback);
+        (azureAdapter as { on: (event: string, callback: () => void) => void }).on('invalidEvent', mockCallback);
       }).not.toThrow();
 
       expect(() => {
-        (elevenlabsAdapter as any).off('invalidEvent', mockCallback);
-        (azureAdapter as any).off('invalidEvent', mockCallback);
+        (elevenlabsAdapter as { off: (event: string, callback: () => void) => void }).off('invalidEvent', mockCallback);
+        (azureAdapter as { off: (event: string, callback: () => void) => void }).off('invalidEvent', mockCallback);
       }).not.toThrow();
     });
   });
 
   describe('SOLID Principles Compliance', () => {
     test('Single Responsibility: Adapters only handle TTS playback', () => {
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
 
       // Should not have text processing methods
       expect(elevenlabsAdapter).not.toHaveProperty('formatText');
@@ -360,14 +373,14 @@ describe('TTS Adapters - SOLID Architecture', () => {
         validateText: jest.fn(() => true)
       };
 
-      expect(() => new ElevenLabsAdapter(customProcessor)).not.toThrow();
-      expect(() => new AzureAdapter(customProcessor)).not.toThrow();
+      expect(() => new ElevenLabsAdapter(customProcessor, mockVoiceService)).not.toThrow();
+      expect(() => new AzureAdapter(customProcessor, mockVoiceService)).not.toThrow();
     });
 
     test('Open/Closed: Adapters can be extended without modification', () => {
       // Both adapters implement the same interface
-      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor);
-      const azureAdapter = new AzureAdapter(textProcessor);
+      const elevenlabsAdapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
+      const azureAdapter = new AzureAdapter(textProcessor, mockVoiceService);
 
       // Should be possible to use them interchangeably
       const adapters = [elevenlabsAdapter, azureAdapter];
@@ -379,7 +392,7 @@ describe('TTS Adapters - SOLID Architecture', () => {
     });
 
     test('Interface Segregation: Clean interfaces without unnecessary methods', () => {
-      const adapter = new ElevenLabsAdapter(textProcessor);
+      const adapter = new ElevenLabsAdapter(textProcessor, mockVoiceService);
 
       // Should only have public methods defined in interfaces
       const expectedMethods = [
@@ -400,7 +413,7 @@ describe('TTS Adapters - SOLID Architecture', () => {
       const adapterMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(adapter))
         .filter(name => {
           if (name === 'constructor') return false;
-          if (typeof (adapter as any)[name] !== 'function') return false;
+          if (typeof (adapter as unknown as Record<string, unknown>)[name] !== 'function') return false;
           if (privateMethodNames.includes(name)) return false;
           return true;
         });

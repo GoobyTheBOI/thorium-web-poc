@@ -58,7 +58,7 @@ describe('EpubTextExtractionService - SOLID Architecture Tests', () => {
     test('service focuses solely on text extraction responsibility', () => {
       const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(service));
       const publicMethods = methods.filter(method =>
-        method !== 'constructor' && !method.startsWith('_') && typeof (service as any)[method] === 'function'
+        method !== 'constructor' && !method.startsWith('_') && typeof (service as unknown)[method] === 'function'
       );
 
       expect(publicMethods).toContain('extractTextChunks');

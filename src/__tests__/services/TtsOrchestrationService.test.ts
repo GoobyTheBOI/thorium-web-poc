@@ -10,9 +10,9 @@ jest.mock('@/lib/factories/AdapterFactory');
 
 describe('TtsOrchestrationService', () => {
   let service: ITtsOrchestrationService;
-  let mockAdapter: any;
-  let mockTextExtractor: any;
-  let mockStateManager: any;
+  let mockAdapter: unknown;
+  let mockTextExtractor: unknown;
+  let mockStateManager: unknown;
   let mockCallbacks: TtsCallbacks;
 
   const createMockAdapter = (): jest.Mocked<IPlaybackAdapter> => ({
@@ -37,7 +37,7 @@ describe('TtsOrchestrationService', () => {
     getCurrentReaderElement: jest.fn().mockReturnValue(document.createElement('div')),
   });
 
-  const createMockStateManager = (): any => ({
+  const createMockStateManager = (): unknown => ({
     getState: jest.fn().mockReturnValue({
       isPlaying: false,
       isPaused: false,
@@ -55,7 +55,7 @@ describe('TtsOrchestrationService', () => {
     reset: jest.fn(),
   });
 
-  const createMockVoiceService = (): any => ({
+  const createMockVoiceService = (): unknown => ({
     setVoice: jest.fn(),
     getVoice: jest.fn(),
     getVoices: jest.fn().mockResolvedValue([]),
@@ -316,7 +316,7 @@ describe('TtsOrchestrationService', () => {
         ...mockAdapter,
         getIsPlaying: undefined,
         getIsPaused: undefined,
-      } as any;
+      } as unknown;
 
       const serviceWithoutState = new TtsOrchestrationService(
         adapterWithoutState,

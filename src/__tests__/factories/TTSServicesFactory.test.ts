@@ -1,11 +1,6 @@
-import { createTTSServices, destroyTTSServices, TTSServices } from '@/lib/factories/TTSServicesFactory';
-import { AdapterType, createAdapter } from '@/lib/factories/AdapterFactory';
-import { TtsState } from '../../lib/managers/TtsStateManager';
+import { createTTSServices, destroyTTSServices } from '@/lib/factories/TTSServicesFactory';
 
 describe('TTSServicesFactory', () => {
-    const mockOnStateChange = jest.fn<void, [TtsState]>();
-    const mockOnAdapterSwitch = jest.fn<void, [AdapterType]>();
-
     beforeEach(() => {
         jest.clearAllMocks();
     });
@@ -52,13 +47,14 @@ describe('TTSServicesFactory', () => {
 
         test('handles undefined services gracefully', () => {
             const partialServices = {
+                stateManager: undefined,
                 textExtractionService: undefined,
                 voiceManagementService: undefined,
                 orchestrationService: { destroy: jest.fn() },
                 keyboardHandler: { cleanup: jest.fn() },
                 voiceHandler: { cleanup: jest.fn() },
                 currentAdapter: undefined,
-            } as any;
+            } as unknown as ReturnType<typeof createTTSServices>;
 
             // Should not throw
             expect(() => destroyTTSServices(partialServices)).not.toThrow();

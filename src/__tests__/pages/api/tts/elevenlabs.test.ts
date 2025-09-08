@@ -37,8 +37,10 @@ describe('/api/tts/elevenlabs', () => {
     });
   };
 
-  const setupElevenLabsClientMock = (mockClient: any) => {
-    const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
+  const setupElevenLabsClientMock = (mockClient: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { ElevenLabsClient } // eslint-disable-next-line @typescript-eslint/no-require-imports
+      = require('@elevenlabs/elevenlabs-js');
     ElevenLabsClient.mockImplementation(() => mockClient);
   };
 
@@ -182,7 +184,9 @@ describe('/api/tts/elevenlabs', () => {
       expect(res.getHeader('Content-Type')).toBe('audio/mpeg');
       expect(res.getHeader('x-request-id')).toBe('test-request-id');
 
-      const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { ElevenLabsClient } // eslint-disable-next-line @typescript-eslint/no-require-imports
+      = require('@elevenlabs/elevenlabs-js');
       expect(ElevenLabsClient).toHaveBeenCalledWith({
         apiKey: 'test-api-key',
       });
@@ -398,7 +402,9 @@ describe('/api/tts/elevenlabs', () => {
     });
 
     test('handles ElevenLabs client initialization errors', async () => {
-      const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { ElevenLabsClient } // eslint-disable-next-line @typescript-eslint/no-require-imports
+      = require('@elevenlabs/elevenlabs-js');
       ElevenLabsClient.mockImplementation(() => {
         throw new Error('Invalid API key format');
       });
@@ -515,7 +521,9 @@ describe('/api/tts/elevenlabs', () => {
     test('Dependency Inversion: Depends on ElevenLabs SDK abstractions', async () => {
       process.env.ELEVENLABS_API_KEY = 'test-api-key';
 
-      const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { ElevenLabsClient } // eslint-disable-next-line @typescript-eslint/no-require-imports
+      = require('@elevenlabs/elevenlabs-js');
       expect(ElevenLabsClient).toBeDefined();
 
       const mockClient = createMockElevenLabsClient();
