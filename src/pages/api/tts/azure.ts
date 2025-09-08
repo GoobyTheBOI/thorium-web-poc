@@ -1,7 +1,6 @@
 import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
-    AudioConfig,
     SpeechConfig,
     SpeechSynthesizer,
     ResultReason,
@@ -49,10 +48,7 @@ export default async function handler(
         // Set output format to MP3 for web compatibility
         speechConfig.speechSynthesisOutputFormat = SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3;
 
-        // Use null audio config to get audio data in memory instead of file
-        const audioConfig = AudioConfig.fromDefaultSpeakerOutput();
-
-        // Create synthesizer
+        // Create synthesizer (using null audio config to get audio data in memory instead of file)
         const speechSynthesizer = new SpeechSynthesizer(speechConfig, null);
 
         try {

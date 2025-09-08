@@ -1,5 +1,12 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
+import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
 import { TEST_CONFIG } from '../../lib/constants/testConstants';
+import { 
+  MockAudioElement, 
+  MockTextProcessor, 
+  MockVoiceService,
+  ElevenLabsAdapterWithPrivates 
+} from '../types/adapterTestTypes';
 
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
   ElevenLabsApi: jest.fn().mockImplementation(() => ({
@@ -11,21 +18,14 @@ jest.mock('@elevenlabs/elevenlabs-js', () => ({
 
 describe('ElevenLabsAdapter', () => {
   let adapter: ElevenLabsAdapter;
-  let mockConfig: any;
-  let mockTextProcessor: any;
-  let mockVoiceService: any;
+  let mockTextProcessor: MockTextProcessor;
+  let mockVoiceService: MockVoiceService;
 
   beforeEach(() => {
-    mockConfig = {
-      voiceId: TEST_CONFIG.TEST_DATA.VOICE_IDS.ELEVENLABS,
-      modelId: TEST_CONFIG.TEST_DATA.MODEL_IDS.ELEVENLABS_MULTILINGUAL,
-      apiKey: TEST_CONFIG.TEST_DATA.API_KEYS.ELEVENLABS
-    };
-
     mockTextProcessor = {
       formatText: jest.fn((text) => text),
       processText: jest.fn((text) => text),
-      validateText: jest.fn((text) => true), // Always return true for tests
+      validateText: jest.fn(() => true), // Always return true for tests
     };
 
     mockVoiceService = {
@@ -34,14 +34,15 @@ describe('ElevenLabsAdapter', () => {
       getCurrentVoice: jest.fn(() => ({ id: TEST_CONFIG.TEST_DATA.VOICE_IDS.ELEVENLABS, name: 'Test Voice' }))
     };
 
-    adapter = new ElevenLabsAdapter(mockTextProcessor, mockVoiceService);
+    adapter = new ElevenLabsAdapter(mockTextProcessor, mockVoiceService as unknown as VoiceManagementService);
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    if ((adapter as any).currentAudio) {
-      (adapter as any).currentAudio.pause();
-      (adapter as any).currentAudio = null;
+    const currentAudio = (adapter as unknown as { currentAudio: HTMLAudioElement | null }).currentAudio;
+    if (currentAudio) {
+      currentAudio.pause();
+      (adapter as unknown as { currentAudio: HTMLAudioElement | null }).currentAudio = null;
     }
   });
 
@@ -53,7 +54,7 @@ describe('ElevenLabsAdapter', () => {
         index: 0
       };
 
-      jest.spyOn(adapter as any, 'executePlayRequest').mockResolvedValue({
+      jest.spyOn(adapter as unknown as ElevenLabsAdapterWithPrivates, 'executePlayRequest').mockResolvedValue({
         requestId: 'test-request-id',
         audio: new Audio()
       });
@@ -71,7 +72,7 @@ describe('ElevenLabsAdapter', () => {
         index: 0
       };
 
-      jest.spyOn(adapter as any, 'executePlayRequest').mockResolvedValue({
+      jest.spyOn(adapter as unknown as ElevenLabsAdapterWithPrivates, 'executePlayRequest').mockResolvedValue({
         requestId: null,
         audio: new Audio()
       });
@@ -82,70 +83,70 @@ describe('ElevenLabsAdapter', () => {
     });
 
     test('validateAndFormatText handles various input types', () => {
-      expect(() => (adapter as any).validateAndFormatText(TEST_CONFIG.TEST_DATA.SHORT_TEXT)).not.toThrow();
-      expect(() => (adapter as any).validateAndFormatText([TEST_CONFIG.TEST_DATA.SHORT_TEXT, 'World'])).not.toThrow();
-      expect(() => (adapter as any).validateAndFormatText({ text: TEST_CONFIG.TEST_DATA.SHORT_TEXT })).not.toThrow();
+      expect(() => (adapter as unknown as ElevenLabsAdapterWithPrivates).validateAndFormatText(TEST_CONFIG.TEST_DATA.SHORT_TEXT)).not.toThrow();
+      expect(() => (adapter as unknown as ElevenLabsAdapterWithPrivates).validateAndFormatText([TEST_CONFIG.TEST_DATA.SHORT_TEXT, 'World'])).not.toThrow();
+      expect(() => (adapter as unknown as ElevenLabsAdapterWithPrivates).validateAndFormatText({ text: TEST_CONFIG.TEST_DATA.SHORT_TEXT })).not.toThrow();
     });
   });
 
   describe('Audio Playback Control', () => {
     test('pause method pauses current audio', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn(),
         currentTime: 0,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPlaying = true;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying = true;
 
       adapter.pause();
 
       expect(mockAudio.pause).toHaveBeenCalled();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(true);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(true);
     });
 
     test('resume method resumes paused audio', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn().mockResolvedValue(undefined),
         currentTime: 30,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPaused = true;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused = true;
 
       adapter.resume();
 
       expect(mockAudio.play).toHaveBeenCalled();
-      expect((adapter as any).isPlaying).toBe(true);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(true);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(false);
     });
 
     test('stop method stops and resets audio', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn(),
         currentTime: 30,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPlaying = true;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying = true;
 
       adapter.stop();
 
       expect(mockAudio.pause).toHaveBeenCalled();
       expect(mockAudio.currentTime).toBe(0);
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(false);
     });
 
     test('handles operations when no audio is loaded', () => {
-      (adapter as any).currentAudio = null;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).currentAudio = null;
 
       expect(() => adapter.pause()).not.toThrow();
       expect(() => adapter.resume()).not.toThrow();
@@ -161,9 +162,9 @@ describe('ElevenLabsAdapter', () => {
       adapter.on('pause', callback);
       adapter.on('error', callback);
 
-      expect((adapter as any).eventListeners.get('play')).toContain(callback);
-      expect((adapter as any).eventListeners.get('pause')).toContain(callback);
-      expect((adapter as any).eventListeners.get('error')).toContain(callback);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).eventListeners.get('play')).toContain(callback);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).eventListeners.get('pause')).toContain(callback);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).eventListeners.get('error')).toContain(callback);
     });
 
     test('off method removes event listeners', () => {
@@ -172,7 +173,7 @@ describe('ElevenLabsAdapter', () => {
       adapter.on('play', callback);
       adapter.off('play', callback);
 
-      const listeners = (adapter as any).eventListeners.get('play');
+      const listeners = (adapter as unknown as ElevenLabsAdapterWithPrivates).eventListeners.get('play');
       expect(listeners).not.toContain(callback);
     });
 
@@ -180,7 +181,7 @@ describe('ElevenLabsAdapter', () => {
       const callback = jest.fn();
 
       adapter.on('play', callback);
-      (adapter as any).emitEvent('play', { test: 'data' });
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).emitEvent('play', { test: 'data' });
 
       expect(callback).toHaveBeenCalledWith({ test: 'data' });
     });
@@ -188,45 +189,45 @@ describe('ElevenLabsAdapter', () => {
 
   describe('State Management', () => {
     test('updatePlaybackState manages internal state correctly', () => {
-      (adapter as any).updatePlaybackState(true, false);
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).updatePlaybackState(true, false);
 
-      expect((adapter as any).isPlaying).toBe(true);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(true);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(false);
 
-      (adapter as any).updatePlaybackState(false, true);
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).updatePlaybackState(false, true);
 
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(true);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(true);
     });
 
     test('tracks audio state correctly during operations', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn().mockResolvedValue(undefined),
         currentTime: 0,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPlaying = true;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying = true;
 
       adapter.pause();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(true);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(true);
 
       adapter.resume();
-      expect((adapter as any).isPlaying).toBe(true);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(true);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(false);
 
       adapter.stop();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused).toBe(false);
     });
   });
 
   describe('Error Handling', () => {
     test('handles resume errors gracefully', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn().mockRejectedValue(new Error('Play failed')),
         currentTime: 0,
@@ -236,8 +237,8 @@ describe('ElevenLabsAdapter', () => {
       const errorCallback = jest.fn();
       adapter.on('error', errorCallback);
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPaused = true;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).isPaused = true;
 
       adapter.resume();
 
@@ -245,9 +246,9 @@ describe('ElevenLabsAdapter', () => {
     });
 
     test('handles invalid text input gracefully', () => {
-      expect(() => (adapter as any).validateAndFormatText(null)).not.toThrow();
-      expect(() => (adapter as any).validateAndFormatText(undefined)).not.toThrow();
-      expect(() => (adapter as any).validateAndFormatText(123)).not.toThrow();
+      expect(() => (adapter as unknown as ElevenLabsAdapterWithPrivates).validateAndFormatText(null)).not.toThrow();
+      expect(() => (adapter as unknown as ElevenLabsAdapterWithPrivates).validateAndFormatText(undefined)).not.toThrow();
+      expect(() => (adapter as unknown as ElevenLabsAdapterWithPrivates).validateAndFormatText(123)).not.toThrow();
     });
 
     test('emits error events for failures', () => {
@@ -255,7 +256,7 @@ describe('ElevenLabsAdapter', () => {
       adapter.on('error', errorCallback);
 
       const testError = new Error('Test error');
-      (adapter as any).emitEvent('error', { error: testError });
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).emitEvent('error', { error: testError });
 
       expect(errorCallback).toHaveBeenCalledWith({ error: testError });
     });
@@ -263,16 +264,16 @@ describe('ElevenLabsAdapter', () => {
 
   describe('Configuration Management', () => {
     test('uses default configuration correctly', () => {
-      expect((adapter as any).config.voiceId).toBe('EXAVITQu4vr4xnSDxMaL');
-      expect((adapter as any).config.modelId).toBe(TEST_CONFIG.TEST_DATA.MODEL_IDS.ELEVENLABS_MULTILINGUAL);
-      expect((adapter as any).config.apiKey).toBe('test-elevenlabs-key'); // From jest.setup.js
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).config.voiceId).toBe('EXAVITQu4vr4xnSDxMaL');
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).config.modelId).toBe(TEST_CONFIG.TEST_DATA.MODEL_IDS.ELEVENLABS_MULTILINGUAL);
+      expect((adapter as unknown as ElevenLabsAdapterWithPrivates).config.apiKey).toBe('test-elevenlabs-key'); // From jest.setup.js
     });
 
     test('integrates with text processor', () => {
       const testText = TEST_CONFIG.TEST_DATA.SIMPLE_TEXT;
       const testElement = 'paragraph';
 
-      (adapter as any).textProcessor.formatText(testText, testElement);
+      (adapter as unknown as ElevenLabsAdapterWithPrivates).textProcessor.formatText(testText, testElement);
 
       expect(mockTextProcessor.formatText).toHaveBeenCalledWith(testText, testElement);
     });

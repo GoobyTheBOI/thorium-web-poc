@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 
-import { layoutPresets, layoutPresetsValues } from "@/preferences/enums";
+import { LayoutPresets, LAYOUT_PRESETS_VALUES } from "@/preferences/enums";
 
 import { 
   useEpubNavigator, 
@@ -22,12 +22,12 @@ export const useLineLengths = () => {
   // On mount and when layoutPreset changes, sync line lengths
   useEffect(() => {
     // If not custom, submit the preset values
-    if (layoutPreset !== "custom") {
-      const preset = layoutPresetsValues[layoutPreset as keyof typeof layoutPresetsValues];
+    if (layoutPreset !== LayoutPresets.CUSTOM) {
+      const preset = LAYOUT_PRESETS_VALUES[layoutPreset as keyof typeof LAYOUT_PRESETS_VALUES];
       submitPreferences({
-        minimalLineLength: preset.min,
-        optimalLineLength: preset.optimal,
-        maximalLineLength: preset.max
+        minimalLineLength: preset.MIN,
+        optimalLineLength: preset.OPTIMAL,
+        maximalLineLength: preset.MAX
       });
     
     // Always sync Redux with current preferences
@@ -65,16 +65,16 @@ export const useLineLengths = () => {
   };
 
   // Update preset (used by PlaygroundLayoutPresets)
-  const updatePreset = useCallback(async (value: layoutPresets) => {
+  const updatePreset = useCallback(async (value: LayoutPresets) => {
     dispatch(setLayoutPreset(value));
     
     // If the preset is not "custom", update the preferences with the preset values
-    if (value !== "custom") {
-      const preset = layoutPresetsValues[value];
+    if (value !== LayoutPresets.CUSTOM) {
+      const preset = LAYOUT_PRESETS_VALUES[value];
       await submitPreferences({
-        minimalLineLength: preset.min,
-        optimalLineLength: preset.optimal,
-        maximalLineLength: preset.max
+        minimalLineLength: preset.MIN,
+        optimalLineLength: preset.OPTIMAL,
+        maximalLineLength: preset.MAX
       });
     }
   }, [dispatch, submitPreferences]);
@@ -82,8 +82,8 @@ export const useLineLengths = () => {
   // Update line length (used by PlaygroundLineLengths)
   const updatePreference = useCallback(async (type: "min" | "optimal" | "max", value: number) => {
     // Switch to custom if needed
-    if (layoutPreset !== "custom") {
-      dispatch(setLayoutPreset("custom"));
+    if (layoutPreset !== LayoutPresets.CUSTOM) {
+      dispatch(setLayoutPreset(LayoutPresets.CUSTOM));
     }
     
     const prefKey = getPreferenceKey(type);
@@ -106,8 +106,8 @@ export const useLineLengths = () => {
     const prefKey = getPreferenceKey(type);
     
     // Switch to custom layout when toggling min/max
-    if (layoutPreset !== "custom") {
-      dispatch(setLayoutPreset("custom"));
+    if (layoutPreset !== LayoutPresets.CUSTOM) {
+      dispatch(setLayoutPreset(LayoutPresets.CUSTOM));
     }
     
     if (isSelected) {

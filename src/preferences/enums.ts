@@ -1,36 +1,18 @@
-export enum layoutPresets {
-  lineLength = "lineLength",
-  margin = "margin",
-  fullWidth = "fullWidth",
-  columns = "columns",
-  newspaper = "newspaper",
-  custom = "custom"
+import { LAYOUT_CONSTANTS } from '@/lib/constants/uiConstants';
+
+export enum LayoutPresets {
+  LINE_LENGTH = "lineLength",
+  MARGIN = "margin",
+  FULL_WIDTH = "fullWidth",
+  COLUMNS = "columns",
+  NEWSPAPER = "newspaper",
+  CUSTOM = "custom"
 }
 
-export const layoutPresetsValues = {
-  lineLength: {
-    min: 40,
-    optimal: 65,
-    max: 75 
-  },
-  margin: {
-    min: 40,
-    optimal: 65,
-    max: 65 
-  },
-  fullWidth: {
-    min: 40,
-    optimal: 65,
-    max: null 
-  },
-  columns: {
-    min: null,
-    optimal: 65,
-    max: 75
-  },
-  newspaper: {
-    min: 30,
-    optimal: 40,
-    max: 50
-  }
+export const LAYOUT_PRESETS_VALUES = {
+  [LayoutPresets.LINE_LENGTH]: LAYOUT_CONSTANTS.PRESET_VALUES.LINE_LENGTH,
+  [LayoutPresets.MARGIN]: LAYOUT_CONSTANTS.PRESET_VALUES.MARGIN,
+  [LayoutPresets.FULL_WIDTH]: LAYOUT_CONSTANTS.PRESET_VALUES.FULL_WIDTH,
+  [LayoutPresets.COLUMNS]: LAYOUT_CONSTANTS.PRESET_VALUES.COLUMNS,
+  [LayoutPresets.NEWSPAPER]: LAYOUT_CONSTANTS.PRESET_VALUES.NEWSPAPER
 }

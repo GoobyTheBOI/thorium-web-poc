@@ -1,4 +1,11 @@
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
+import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
+import { TEST_CONFIG } from '../../lib/constants/testConstants';
+import { 
+  MockAudioElement, 
+  MockTextProcessor, 
+  AzureAdapterWithPrivates 
+} from '../types/adapterTestTypes';
 
 jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
   SpeechConfig: {
@@ -20,17 +27,9 @@ jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
 
 describe('AzureAdapter', () => {
   let adapter: AzureAdapter;
-  let mockConfig: any;
-  let mockTextProcessor: any;
+  let mockTextProcessor: MockTextProcessor;
 
   beforeEach(() => {
-    mockConfig = {
-      apiKey: 'test-azure-key',
-      region: 'test-region',
-      voiceId: 'en-US-Adam:DragonHDLatestNeural',
-      language: 'en-US'
-    };
-
     mockTextProcessor = {
       formatText: jest.fn((text) => text),
       processText: jest.fn((text) => text),
@@ -39,15 +38,26 @@ describe('AzureAdapter', () => {
       }),
     };
 
-    adapter = new AzureAdapter(mockTextProcessor);
+    const mockVoiceService = {
+      loadRediumVoices: jest.fn().mockResolvedValue([]),
+      loadElevenLabsVoices: jest.fn().mockResolvedValue([]),
+      loadAzureVoices: jest.fn().mockResolvedValue([]),
+      selectVoice: jest.fn(),
+      getSelectedVoice: jest.fn().mockReturnValue(null),
+      getVoicesByGender: jest.fn().mockResolvedValue([]),
+      getCurrentVoiceGender: jest.fn().mockResolvedValue('neutral'),
+    };
+
+    adapter = new AzureAdapter(mockTextProcessor, mockVoiceService as unknown as VoiceManagementService);
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     // Clean up any audio elements
-    if ((adapter as any).currentAudio) {
-      (adapter as any).currentAudio.pause();
-      (adapter as any).currentAudio = null;
+    const currentAudio = (adapter as unknown as { currentAudio: HTMLAudioElement | null }).currentAudio;
+    if (currentAudio) {
+      currentAudio.pause();
+      (adapter as unknown as { currentAudio: HTMLAudioElement | null }).currentAudio = null;
     }
 
     // Reset fetch mock
@@ -61,23 +71,23 @@ describe('AzureAdapter', () => {
     });
 
     test('initializes with correct configuration', () => {
-      expect((adapter as any).config).toBeDefined();
-      expect((adapter as any).config.apiKey).toBe('test-azure-key');
-      expect((adapter as any).config.voiceId).toBe('en-US-Adam:DragonHDLatestNeural');
-      expect((adapter as any).config.modelId).toBe('neural');
+      expect((adapter as unknown as { config: { apiKey: string; voiceId: string; modelId: string } }).config).toBeDefined();
+      expect((adapter as unknown as { config: { apiKey: string; voiceId: string; modelId: string } }).config.apiKey).toBe(TEST_CONFIG.TEST_DATA.API_KEYS.AZURE);
+      expect((adapter as unknown as { config: { apiKey: string; voiceId: string; modelId: string } }).config.voiceId).toBe('en-US-Adam:DragonHDLatestNeural');
+      expect((adapter as unknown as { config: { apiKey: string; voiceId: string; modelId: string } }).config.modelId).toBe('neural');
     });
 
     test('initializes with text processor', () => {
-      expect((adapter as any).textProcessor).toBeDefined();
-      expect(typeof (adapter as any).textProcessor.validateText).toBe('function');
-      expect(typeof (adapter as any).textProcessor.formatText).toBe('function');
+      expect((adapter as unknown as { textProcessor: typeof mockTextProcessor }).textProcessor).toBeDefined();
+      expect(typeof (adapter as unknown as { textProcessor: typeof mockTextProcessor }).textProcessor.validateText).toBe('function');
+      expect(typeof (adapter as unknown as { textProcessor: typeof mockTextProcessor }).textProcessor.formatText).toBe('function');
     });
   });
 
   describe('Text-to-Speech Processing', () => {
     test('play method processes text chunk correctly', async () => {
       const textChunk = {
-        text: 'Hello world',
+        text: TEST_CONFIG.TEST_DATA.SIMPLE_TEXT,
         element: 'paragraph',
         index: 0
       };
@@ -104,15 +114,15 @@ describe('AzureAdapter', () => {
         currentTime: 0,
         duration: 0
       };
-      (global as any).Audio = jest.fn(() => mockAudio);
+      (global as unknown as { Audio: jest.Mock }).Audio = jest.fn(() => mockAudio);
 
       const result = await adapter.play(textChunk);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/tts/azure', {
+      expect(global.fetch).toHaveBeenCalledWith(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: 'Hello world',
+          text: TEST_CONFIG.TEST_DATA.SIMPLE_TEXT,
           voiceId: 'en-US-Adam:DragonHDLatestNeural',
           modelId: 'neural'
         })
@@ -122,10 +132,10 @@ describe('AzureAdapter', () => {
 
     test('validates text input correctly', async () => {
       // Test that the adapter uses the text processor for validation
-      expect(typeof (adapter as any).textProcessor.validateText).toBe('function');
+      expect(typeof (adapter as unknown as { textProcessor: typeof mockTextProcessor }).textProcessor.validateText).toBe('function');
 
       // The validateText method should be called during play
-      const spy = jest.spyOn((adapter as any).textProcessor, 'validateText');
+      const spy = jest.spyOn((adapter as unknown as { textProcessor: typeof mockTextProcessor }).textProcessor, 'validateText');
 
       // Mock successful API response for this test
       const mockAudioBlob = new Blob(['fake audio data'], { type: 'audio/mpeg' });
@@ -141,24 +151,18 @@ describe('AzureAdapter', () => {
         addEventListener: jest.fn(),
         removeEventListener: jest.fn()
       };
-      (global as any).Audio = jest.fn(() => mockAudio);
+      (global as unknown as { Audio: jest.Mock }).Audio = jest.fn(() => mockAudio);
 
-      const textChunk = { text: 'Hello world', element: 'paragraph', index: 0 };
+      const textChunk = { text: TEST_CONFIG.TEST_DATA.SIMPLE_TEXT, element: 'paragraph', index: 0 };
       await adapter.play(textChunk);
 
-      expect(spy).toHaveBeenCalledWith('Hello world');
+      expect(spy).toHaveBeenCalledWith(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT);
       spy.mockRestore();
     });
 
     test('handles API responses appropriately', async () => {
       // Test that the adapter can handle different types of responses
       expect(typeof adapter.play).toBe('function');
-
-      const textChunk = {
-        text: 'Hello world',
-        element: 'paragraph',
-        index: 0
-      };
 
       // This test verifies the adapter has error handling mechanisms in place
       // without relying on specific mock behavior that may vary
@@ -174,62 +178,62 @@ describe('AzureAdapter', () => {
 
   describe('Audio Playback Control', () => {
     test('pause method pauses current audio', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn(),
         currentTime: 15,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPlaying = true;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as AzureAdapterWithPrivates).isPlaying = true;
 
       adapter.pause();
 
       expect(mockAudio.pause).toHaveBeenCalled();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(true);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(true);
     });
 
     test('resume method resumes paused audio', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn().mockResolvedValue(undefined),
         currentTime: 15,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPaused = true;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as AzureAdapterWithPrivates).isPaused = true;
 
       adapter.resume();
 
       expect(mockAudio.play).toHaveBeenCalled();
-      expect((adapter as any).isPlaying).toBe(true);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(true);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(false);
     });
 
     test('stop method stops and resets audio', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn(),
         currentTime: 30,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPlaying = true;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as AzureAdapterWithPrivates).isPlaying = true;
 
       adapter.stop();
 
       expect(mockAudio.pause).toHaveBeenCalled();
       expect(mockAudio.currentTime).toBe(0);
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(false);
     });
 
     test('handles operations when no audio is loaded', () => {
-      (adapter as any).currentAudio = null;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = null;
 
       expect(() => adapter.pause()).not.toThrow();
       expect(() => adapter.resume()).not.toThrow();
@@ -247,9 +251,9 @@ describe('AzureAdapter', () => {
       adapter.on('pause', pauseCallback);
       adapter.on('error', errorCallback);
 
-      expect((adapter as any).eventListeners.get('play')).toContain(playCallback);
-      expect((adapter as any).eventListeners.get('pause')).toContain(pauseCallback);
-      expect((adapter as any).eventListeners.get('error')).toContain(errorCallback);
+      expect((adapter as unknown as AzureAdapterWithPrivates).eventListeners.get('play')).toContain(playCallback);
+      expect((adapter as unknown as AzureAdapterWithPrivates).eventListeners.get('pause')).toContain(pauseCallback);
+      expect((adapter as unknown as AzureAdapterWithPrivates).eventListeners.get('error')).toContain(errorCallback);
     });
 
     test('off method removes event listeners', () => {
@@ -258,7 +262,7 @@ describe('AzureAdapter', () => {
       adapter.on('play', callback);
       adapter.off('play', callback);
 
-      const listeners = (adapter as any).eventListeners.get('play');
+      const listeners = (adapter as unknown as AzureAdapterWithPrivates).eventListeners.get('play');
       expect(listeners).not.toContain(callback);
     });
 
@@ -267,7 +271,7 @@ describe('AzureAdapter', () => {
       const eventData = { test: 'data' };
 
       adapter.on('play', callback);
-      (adapter as any).emitEvent('play', eventData);
+      (adapter as unknown as AzureAdapterWithPrivates).emitEvent('play', eventData);
 
       expect(callback).toHaveBeenCalledWith(eventData);
     });
@@ -277,8 +281,8 @@ describe('AzureAdapter', () => {
 
       events.forEach(event => {
         const callback = jest.fn();
-        expect(() => adapter.on(event as any, callback)).not.toThrow();
-        expect(() => adapter.off(event as any, callback)).not.toThrow();
+        expect(() => adapter.on(event as 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback)).not.toThrow();
+        expect(() => adapter.off(event as 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback)).not.toThrow();
       });
     });
   });
@@ -300,88 +304,101 @@ describe('AzureAdapter', () => {
 
   describe('State Management', () => {
     test('updatePlaybackState manages internal state correctly', () => {
-      (adapter as any).updatePlaybackState(true, false);
+      (adapter as unknown as AzureAdapterWithPrivates).updatePlaybackState(true, false);
 
-      expect((adapter as any).isPlaying).toBe(true);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(true);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(false);
 
-      (adapter as any).updatePlaybackState(false, true);
+      (adapter as unknown as AzureAdapterWithPrivates).updatePlaybackState(false, true);
 
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(true);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(true);
     });
 
     test('tracks playback state correctly during operations', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn().mockResolvedValue(undefined),
         currentTime: 0,
         duration: 60
       };
 
-      (adapter as any).currentAudio = mockAudio;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
 
       // Test pause state
-      (adapter as any).isPlaying = true;
+      (adapter as unknown as AzureAdapterWithPrivates).isPlaying = true;
       adapter.pause();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(true);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(true);
 
       // Test resume state
       adapter.resume();
-      expect((adapter as any).isPlaying).toBe(true);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(true);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(false);
 
       // Test stop state
       adapter.stop();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(false);
     });
   });
 
   describe('Resource Management', () => {
     test('cleanup properly releases audio resources', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
+        play: jest.fn(),
         src: 'blob:fake-url',
-        load: jest.fn()
+        load: jest.fn(),
+        currentTime: 0,
+        duration: 0
       };
 
       // Mock URL.revokeObjectURL
       const originalRevokeObjectURL = URL.revokeObjectURL;
       URL.revokeObjectURL = jest.fn();
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).cleanup();
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as AzureAdapterWithPrivates).cleanup();
 
       expect(mockAudio.pause).toHaveBeenCalled();
       expect(mockAudio.load).toHaveBeenCalled();
-      expect((adapter as any).currentAudio).toBeNull();
-      expect((adapter as any).isPlaying).toBe(false);
-      expect((adapter as any).isPaused).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).currentAudio).toBeNull();
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPlaying).toBe(false);
+      expect((adapter as unknown as AzureAdapterWithPrivates).isPaused).toBe(false);
 
       URL.revokeObjectURL = originalRevokeObjectURL;
     });
 
     test('handles cleanup when no resources are allocated', () => {
-      (adapter as any).currentAudio = null;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = null;
 
-      expect(() => (adapter as any).cleanup()).not.toThrow();
+      expect(() => (adapter as unknown as AzureAdapterWithPrivates).cleanup()).not.toThrow();
     });
   });
 
   describe('Error Handling', () => {
     test('handles Azure SDK initialization errors', () => {
-      const sdk = require('microsoft-cognitiveservices-speech-sdk');
-      sdk.SpeechConfig.fromSubscription.mockImplementation(() => {
+      const mockSdk = jest.requireMock('microsoft-cognitiveservices-speech-sdk');
+      mockSdk.SpeechConfig.fromSubscription.mockImplementation(() => {
         throw new Error('Invalid subscription key');
       });
 
-      expect(() => new AzureAdapter(mockConfig)).not.toThrow();
+      const mockVoiceService = {
+        loadRediumVoices: jest.fn().mockResolvedValue([]),
+        loadElevenLabsVoices: jest.fn().mockResolvedValue([]),
+        loadAzureVoices: jest.fn().mockResolvedValue([]),
+        selectVoice: jest.fn(),
+        getSelectedVoice: jest.fn().mockReturnValue(null),
+        getVoicesByGender: jest.fn().mockResolvedValue([]),
+        getCurrentVoiceGender: jest.fn().mockResolvedValue('neutral'),
+      };
+
+      expect(() => new AzureAdapter(mockTextProcessor, mockVoiceService as unknown as VoiceManagementService)).not.toThrow();
     });
 
     test('handles audio playback errors gracefully', () => {
-      const mockAudio = {
+      const mockAudio: MockAudioElement = {
         pause: jest.fn(),
         play: jest.fn().mockRejectedValue(new Error('Play failed')),
         currentTime: 0,
@@ -391,8 +408,8 @@ describe('AzureAdapter', () => {
       const errorCallback = jest.fn();
       adapter.on('error', errorCallback);
 
-      (adapter as any).currentAudio = mockAudio;
-      (adapter as any).isPaused = true;
+      (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
+      (adapter as unknown as AzureAdapterWithPrivates).isPaused = true;
 
       adapter.resume();
 
@@ -401,26 +418,26 @@ describe('AzureAdapter', () => {
 
     test('handles text processing validation', () => {
       // Test that text processor methods are available and work
-      expect(typeof (adapter as any).textProcessor.validateText).toBe('function');
-      expect((adapter as any).textProcessor.validateText('Hello world')).toBe(true);
+      expect(typeof (adapter as unknown as AzureAdapterWithPrivates).textProcessor.validateText).toBe('function');
+      expect((adapter as unknown as AzureAdapterWithPrivates).textProcessor.validateText(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT)).toBe(true);
 
-      expect(typeof (adapter as any).textProcessor.formatText).toBe('function');
-      expect((adapter as any).textProcessor.formatText('Hello world', 'paragraph')).toBe('Hello world');
+      expect(typeof (adapter as unknown as AzureAdapterWithPrivates).textProcessor.formatText).toBe('function');
+      expect((adapter as unknown as AzureAdapterWithPrivates).textProcessor.formatText(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT, 'paragraph')).toBe(TEST_CONFIG.TEST_DATA.SIMPLE_TEXT);
     });
   });
 
   describe('Configuration Integration', () => {
     test('uses default Azure configuration correctly', () => {
-      expect((adapter as any).config.apiKey).toBe('test-azure-key'); // From jest.setup.js
-      expect((adapter as any).config.voiceId).toBe('en-US-Adam:DragonHDLatestNeural');
-      expect((adapter as any).config.modelId).toBe('neural');
+      expect((adapter as unknown as AzureAdapterWithPrivates).config.apiKey).toBe(TEST_CONFIG.TEST_DATA.API_KEYS.AZURE); // From jest.setup.js
+      expect((adapter as unknown as AzureAdapterWithPrivates).config.voiceId).toBe('en-US-Adam:DragonHDLatestNeural');
+      expect((adapter as unknown as AzureAdapterWithPrivates).config.modelId).toBe('neural');
     });
 
     test('integrates with text processor correctly', () => {
-      const testText = 'Hello world';
+      const testText = TEST_CONFIG.TEST_DATA.SIMPLE_TEXT;
       const testElement = 'paragraph';
 
-      (adapter as any).textProcessor.formatText(testText, testElement);
+      (adapter as unknown as AzureAdapterWithPrivates).textProcessor.formatText(testText, testElement);
 
       expect(mockTextProcessor.formatText).toHaveBeenCalledWith(testText, testElement);
     });

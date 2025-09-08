@@ -1,11 +1,12 @@
 import { KeyboardHandler, KeyboardShortcut } from './KeyboardHandler';
 import { ITtsOrchestrationService } from '../services/TtsOrchestrationService';
+import { INTERACTION_CONSTANTS } from '../constants/uiConstants';
 
 export class TtsKeyboardHandler {
     private keyboardHandler: KeyboardHandler;
     private orchestrationService: ITtsOrchestrationService;
     private lastStartTime: number = 0;
-    private readonly START_THROTTLE_MS = 1000; // Prevent rapid start commands
+    private readonly START_THROTTLE_MS = INTERACTION_CONSTANTS.THROTTLE.TTS_START_MS;
 
     constructor(orchestrationService: ITtsOrchestrationService) {
         this.keyboardHandler = new KeyboardHandler();

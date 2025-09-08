@@ -8,6 +8,7 @@ import {
   useI18n,
   useAppSelector,
 } from "@edrlab/thorium-web/epub";
+import { LAYOUT_CONSTANTS } from "@/lib/constants/uiConstants";
 import { PlaygroundMaxChars } from "./PlaygroundMaxChars";
 import { PlaygroundMinChars } from "./PlaygroundMinChars";
 import { useLineLengths } from "./hooks/useLineLengths";
@@ -20,8 +21,8 @@ export const PlaygroundLineLengths = ({ standalone = true }: StatefulSettingsIte
   const { t } = useI18n("playground");
 
   const lineLengthRangeConfig = {
-    range: preferencesEditor?.optimalLineLength.supportedRange || [20, 100],
-    step: preferencesEditor?.optimalLineLength.step || 1
+    range: preferencesEditor?.optimalLineLength.supportedRange || [LAYOUT_CONSTANTS.LINE_LENGTH_RANGE.MIN, LAYOUT_CONSTANTS.LINE_LENGTH_RANGE.MAX],
+    step: preferencesEditor?.optimalLineLength.step || LAYOUT_CONSTANTS.LINE_LENGTH_RANGE.DEFAULT_STEP
   };
 
   const optimalLineLength = lineLength?.optimal || RSPrefs.typography.optimalLineLength;

@@ -1,20 +1,20 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-import { layoutPresets } from "@/preferences/enums";
+import { LayoutPresets } from "@/preferences/enums";
 
 export interface CustomReducerState {
-  layoutPreset: layoutPresets;
+  layoutPreset: LayoutPresets;
 }
 
-const initialState: CustomReducerState = {
-  layoutPreset: layoutPresets.lineLength,
+const INITIAL_STATE: CustomReducerState = {
+  layoutPreset: LayoutPresets.LINE_LENGTH,
 };
 
 const customReducer = createSlice({
   name: "custom",
-  initialState,
+  initialState: INITIAL_STATE,
   reducers: {
-    setLayoutPreset: (state, action) => {
+    setLayoutPreset: (state, action: PayloadAction<LayoutPresets>) => {
       state.layoutPreset = action.payload;
     },
   },
@@ -22,6 +22,6 @@ const customReducer = createSlice({
 
 export const { 
   setLayoutPreset
- } = customReducer.actions;
+} = customReducer.actions;
 
- export default customReducer.reducer;
+export default customReducer.reducer;

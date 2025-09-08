@@ -1,6 +1,6 @@
 "use client";
 
-import { layoutPresets } from "@/preferences/enums";
+import { LayoutPresets } from "@/preferences/enums";
 
 import AddColumnIcon from "./assets/icons/add_column_right.svg";
 import FitIcon from "./assets/icons/fit_width.svg";
@@ -32,37 +32,37 @@ export const PlaygroundLayoutPresetsGroup = () => {
       label={ t("reader.layoutPresets.title") }
       orientation="horizontal"
       value={ layoutPreset }
-      onChange={ async (val: string) => await updatePreset(val as layoutPresets) }
+      onChange={ async (val: string) => await updatePreset(val as LayoutPresets) }
       items={[
         {
           icon: RangeIcon,
           label: t("reader.layoutPresets.lineLength"),
-          value: layoutPresets.lineLength
+          value: LayoutPresets.LINE_LENGTH
         },
         {
           icon: FitIcon,
           label: t("reader.layoutPresets.margin"),
-          value: layoutPresets.margin
+          value: LayoutPresets.MARGIN
         },
         {
           icon: FitPageWidthIcon,
           label: t("reader.layoutPresets.fullWidth"),
-          value: layoutPresets.fullWidth
+          value: LayoutPresets.FULL_WIDTH
         },
         {
           icon: AddColumnIcon,
           label: t("reader.layoutPresets.columns"),
-          value: layoutPresets.columns
+          value: LayoutPresets.COLUMNS
         },
         {
           icon: NewspaperIcon,
           label: t("reader.layoutPresets.newspaper"),
-          value: layoutPresets.newspaper
+          value: LayoutPresets.NEWSPAPER
         },
         {
           icon: TuneIcon,
           label: t("reader.layoutPresets.custom"),
-          value: layoutPresets.custom
+          value: LayoutPresets.CUSTOM
         }
       ]}
     />

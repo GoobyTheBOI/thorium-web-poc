@@ -16,7 +16,7 @@ export interface TtsReducerState {
   error: string | null;
 }
 
-const initialState: TtsReducerState = {
+const INITIAL_STATE: TtsReducerState = {
   // Adapter State
   selectedAdapterType: 'elevenlabs',
   availableAdapters: [],
@@ -37,7 +37,7 @@ const initialState: TtsReducerState = {
 
 const ttsReducer = createSlice({
   name: "tts",
-  initialState,
+  initialState: INITIAL_STATE,
   reducers: {
     // Adapter Actions
     setSelectedAdapterType: (state, action: PayloadAction<AdapterType>) => {

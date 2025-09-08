@@ -3,6 +3,14 @@
  * https://jestjs.io/docs/configuration
  */
 
+// Define constants for coverage thresholds
+const COVERAGE_THRESHOLD = {
+  BRANCHES: 70,
+  FUNCTIONS: 70,
+  LINES: 70,
+  STATEMENTS: 70
+};
+
 module.exports = {
   clearMocks: true,
   collectCoverage: true,
@@ -56,10 +64,10 @@ module.exports = {
 
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
+      branches: COVERAGE_THRESHOLD.BRANCHES,
+      functions: COVERAGE_THRESHOLD.FUNCTIONS,
+      lines: COVERAGE_THRESHOLD.LINES,
+      statements: COVERAGE_THRESHOLD.STATEMENTS
     }
   },
 

@@ -83,9 +83,7 @@ export type AdapterCapabilities = {
     eventSupport?: boolean;
 };
 
-export function createTTSAdapter(
-    capabilities: AdapterCapabilities = {}
-): IBasicTTSAdapter | IAdvancedTTSAdapter {
+export function createTTSAdapter(): IBasicTTSAdapter | IAdvancedTTSAdapter {
     // Factory logic hier - returns adapter met alleen benodigde interfaces
     // Dit voorkomt Interface Segregation violations
     throw new Error('Not implemented - example of ISP design');

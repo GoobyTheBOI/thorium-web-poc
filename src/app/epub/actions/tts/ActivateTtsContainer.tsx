@@ -6,6 +6,7 @@ import React, { useCallback, useState, useEffect } from "react";
 import { ThContainerHeader, ThPopover, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
 import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
 import { KeyboardShortcut } from "@/lib/handlers/KeyboardHandler";
+import { TtsState } from '@/lib/managers/TtsStateManager';
 import styles from "./ActivateTtsContainer.module.css";
 
 import { useTts } from "@/Components/Actions/TTS/hooks";
@@ -19,7 +20,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         return state.actions?.keys?.[TtsActionKeys.activateTts]?.isOpen || false;
     });
 
-    const handleStateChange = useCallback((state: any) => {
+    const handleStateChange = useCallback((state: TtsState) => {
         console.log('TTS State changed:', state);
     }, []);
 
