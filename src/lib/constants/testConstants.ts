@@ -1,3 +1,7 @@
+/**
+ * Test-related constants for TTS service testing
+ */
+
 export const TEST_CONFIG = {
   BASE_URL: 'http://localhost:3000',
   API_ENDPOINTS: {

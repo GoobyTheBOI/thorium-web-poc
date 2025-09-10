@@ -5,9 +5,10 @@ import {
     ITTSError,
     IVoiceProvider,
     VoiceInfo
-} from "../../preferences/types";
-import { TextChunk } from "../../types/tts";
-import { VoiceManagementService } from "../services/VoiceManagementService";
+} from "@/preferences/types";
+import { TextChunk } from "@/types/tts";
+import { VoiceManagementService } from "@/lib/services/VoiceManagementService";
+import { playUniversal, TextToAudioAdapter } from "@/lib/utils/audioPlaybackUtils";
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -20,7 +21,7 @@ interface PlayResult {
     audio: HTMLAudioElement;
 }
 
-export class AzureAdapter implements IPlaybackAdapter {
+export class AzureAdapter implements IPlaybackAdapter, TextToAudioAdapter {
     private readonly config: IAdapterConfig = {
         apiKey: process.env.AZURE_API_KEY || '',
         voiceId: 'en-US-Adam:DragonHDLatestNeural',
@@ -77,7 +78,11 @@ export class AzureAdapter implements IPlaybackAdapter {
         return voice?.gender || null;
     }
 
-    async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
+    async play<T = Buffer>(input: TextChunk | Blob): Promise<T> {
+        return await playUniversal(this, input, { success: true } as T);
+    }
+
+    async playTextChunk<T = Buffer>(textChunk: TextChunk): Promise<T> {
         this.validateText(textChunk.text);
         const processedText = this.processText(textChunk);
         const requestConfig = this.createRequestConfig(processedText);
@@ -152,7 +157,7 @@ export class AzureAdapter implements IPlaybackAdapter {
         return { audioBlob, requestId };
     }
 
-    private async setupAudioPlayback(audioBlob: Blob): Promise<HTMLAudioElement> {
+    public async setupAudioPlayback(audioBlob: Blob): Promise<HTMLAudioElement> {
         const audioUrl = URL.createObjectURL(audioBlob);
         this.currentAudio = new Audio(audioUrl);
 
@@ -175,7 +180,7 @@ export class AzureAdapter implements IPlaybackAdapter {
         this.isPaused = isPaused;
     }
 
-    private emitEvent(event: string, info: unknown): void {
+    public emitEvent(event: string, info: unknown): void {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {
@@ -188,7 +193,7 @@ export class AzureAdapter implements IPlaybackAdapter {
         }
     }
 
-    private createError(code: string, message: string, details?: unknown): ITTSError {
+    public createError(code: string, message: string, details?: unknown): ITTSError {
         return {
             code,
             message,
@@ -247,7 +252,7 @@ export class AzureAdapter implements IPlaybackAdapter {
         });
     }
 
-    private cleanup(): void {
+    public cleanup(): void {
         if (this.currentAudio) {
             // Store the src for cleanup before clearing it
             const currentSrc = this.currentAudio.src;

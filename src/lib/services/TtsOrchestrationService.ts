@@ -84,19 +84,12 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     }
 
     private async prepareTextChunks(): Promise<TextChunk[]> {
-        console.log('TTS Orchestration: Extracting text chunks...');
         const chunks = await this.textExtractor.extractTextChunks();
-        
+
         const filteredChunks = TTS_CONSTANTS.ENABLE_WHOLE_PAGE_READING
             ? chunks
             : chunks.slice(0, TTS_CONSTANTS.CHUNK_SIZE_FOR_TESTING);
-            
-        console.log(`TTS Orchestration: Extracted ${chunks.length} total chunks, using ${filteredChunks.length} chunks (ENABLE_WHOLE_PAGE_READING: ${TTS_CONSTANTS.ENABLE_WHOLE_PAGE_READING})`);
-        
-        filteredChunks.forEach((chunk, index) => {
-            console.log(`Chunk ${index + 1}: "${chunk.text?.substring(0, 50)}..." (element: ${chunk.element})`);
-        });
-        
+
         return filteredChunks;
     }
 
@@ -105,7 +98,6 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
      * Generates audio for all chunks in parallel while playing them sequentially.
      */
     private async processAllChunks(chunks: TextChunk[]): Promise<void> {
-        console.log(`TTS Orchestration: Starting parallel processing of ${chunks.length} chunks`);
         this.isProcessingMultipleChunks = chunks.length > 1;
 
         // Start parallel audio generation for all chunks
@@ -113,8 +105,6 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
         // Play chunks sequentially as their audio becomes available
         await this.playChunksSequentially(chunks, audioGenerationPromises);
-        
-        console.log('TTS Orchestration: Finished processing all chunks');
     }
 
     /**
@@ -123,12 +113,9 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     private startParallelAudioGeneration(chunks: TextChunk[]): Promise<Blob | null>[] {
         return chunks.map(async (chunk, index) => {
             try {
-                console.log(`Background: Starting audio generation for chunk ${index + 1}/${chunks.length}`);
-                const audioBlob = await this.generateAudioOnly(chunk);
-                console.log(`Background: Audio generation completed for chunk ${index + 1}/${chunks.length}`);
-                return audioBlob;
+                return await this.generateAudioOnly(chunk);;
             } catch (error) {
-                console.error(`Background: Audio generation failed for chunk ${index + 1}:`, error);
+                this.handleExecutionError(error);
                 return null;
             }
         });
@@ -138,22 +125,25 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
      * Play chunks sequentially as their audio becomes available.
      */
     private async playChunksSequentially(
-        chunks: TextChunk[], 
+        chunks: TextChunk[],
         audioPromises: Promise<Blob | null>[]
     ): Promise<void> {
         for (let i = 0; i < chunks.length; i++) {
             if (!this.isExecuting) {
-                console.log(`TTS Orchestration: Execution stopped, breaking at chunk ${i + 1}`);
                 break;
             }
 
-            await this.playChunkWhenReady(chunks[i], audioPromises[i], i + 1, chunks.length);
+            await this.playChunkWhenReady(chunks[i], audioPromises[i], i + 1);
+            this.handleStateTransitionAfterFirstChunk(i);
+        }
+    }
 
-            // Transition from "generating" to "playing" after first chunk starts
-            if (i === 0) {
-                this.stateManager.setGenerating(false);
-                console.log('TTS Orchestration: Transitioned from generating to playing');
-            }
+    /**
+     * Handle the state transition from "generating" to "playing" after the first chunk starts.
+     */
+    private handleStateTransitionAfterFirstChunk(chunkIndex: number): void {
+        if (chunkIndex === 0) {
+            this.stateManager.setGenerating(false);
         }
     }
 
@@ -161,29 +151,43 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
      * Play a single chunk when its audio is ready.
      */
     private async playChunkWhenReady(
-        chunk: TextChunk, 
+        chunk: TextChunk,
         audioPromise: Promise<Blob | null>,
         chunkNumber: number,
-        totalChunks: number
     ): Promise<void> {
         try {
-            console.log(`TTS Orchestration: Waiting for audio to be ready for chunk ${chunkNumber}/${totalChunks}`);
-            
-            const audioBlob = await audioPromise;
-            
-            if (audioBlob) {
-                console.log(`TTS Orchestration: Playing pre-generated audio for chunk ${chunkNumber}/${totalChunks}`);
-                await this.playPreGeneratedAudio(audioBlob, chunk);
-            } else {
-                console.warn(`TTS Orchestration: Skipping chunk ${chunkNumber} due to generation failure`);
+            const audioBlob = await this.waitForAudioGeneration(audioPromise);
+
+            if (audioBlob === null || audioBlob.size == null) {
+                return;
             }
-            
-            console.log(`TTS Orchestration: Completed chunk ${chunkNumber}/${totalChunks}`);
+
+            await this.playGeneratedAudio(audioBlob, chunk);
+
         } catch (error) {
-            console.error(`TTS Orchestration: Failed to play chunk ${chunkNumber}:`, error);
-            // Continue with next chunk instead of stopping entirely
+            this.handleExecutionError(error);
         }
     }
+
+    /**
+     * Wait for audio generation to complete and log progress.
+     */
+    private async waitForAudioGeneration(
+        audioPromise: Promise<Blob | null>,
+    ): Promise<Blob | null> {
+        return await audioPromise;
+    }
+
+    /**
+     * Play the generated audio for a chunk.
+     */
+    private async playGeneratedAudio(
+        audioBlob: Blob,
+        chunk: TextChunk,
+    ): Promise<void> {
+        await this.playPreGeneratedAudio(audioBlob, chunk);
+    }
+
 
     /**
      * Generate audio for a chunk without playing it (for parallel processing).
@@ -191,7 +195,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     private async generateAudioOnly(chunk: TextChunk): Promise<Blob> {
         const processedText = this.processTextChunk(chunk);
         const requestConfig = this.createAudioRequestConfig(processedText);
-        
+
         const response = await fetch('/api/tts/azure', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -299,53 +303,10 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     }
 
     /**
-     * Play pre-generated audio blob.
+     * Play pre-generated audio blob using the adapter.
      */
     private async playPreGeneratedAudio(audioBlob: Blob, chunk: TextChunk): Promise<void> {
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-
-        return new Promise<void>((resolve, reject) => {
-            let onEnded: (() => void) | null = null;
-            let onError: ((error: Event) => void) | null = null;
-            
-            const cleanup = () => {
-                URL.revokeObjectURL(audioUrl);
-                if (onEnded) audio.removeEventListener('ended', onEnded);
-                if (onError) audio.removeEventListener('error', onError);
-            };
-            
-            onEnded = () => {
-                console.log(`Playback completed for chunk: "${this.getChunkPreview(chunk)}"`);
-                cleanup();
-                resolve();
-            };
-
-            onError = (error: Event) => {
-                console.error(`Playback error for chunk: "${this.getChunkPreview(chunk)}"`, error);
-                cleanup();
-                reject(new Error(`Audio playback failed`));
-            };
-
-            audio.addEventListener('ended', onEnded);
-            audio.addEventListener('error', onError);
-
-            console.log(`Starting playback for chunk: "${this.getChunkPreview(chunk)}"`);
-            audio.play().catch(playError => {
-                console.error(`Failed to start playback:`, playError);
-                cleanup();
-                reject(playError);
-            });
-        });
-    }
-
-    /**
-     * Get a preview of chunk text for logging.
-     */
-    private getChunkPreview(chunk: TextChunk): string {
-        return chunk.text?.substring(0, 30) + '...' || 'empty chunk';
-    }    private async processChunk(chunk: TextChunk, index: number, total: number): Promise<void> {
-        await this.adapter.play(chunk);
+        await this.adapter.play(audioBlob);
     }
 
     private handleExecutionError(error: unknown): void {
@@ -403,11 +364,11 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
     // State query methods
     isPlaying(): boolean {
-        return this.adapter.getIsPlaying?.() || false;
+        return this.stateManager.getState().isPlaying;
     }
 
     isPaused(): boolean {
-        return this.adapter.getIsPaused?.() || false;
+        return this.stateManager.getState().isPaused;
     }
 
     getState(): TtsState {
@@ -495,10 +456,6 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
         return !this.isProcessingMultipleChunks && !this.isExecuting;
     }
 
-    private isAlreadyUsingAdapter(adapterType: AdapterType): boolean {
-        return adapterType === this.currentAdapterType;
-    }
-
     private handleSuccessfulCompletion(): void {
         if (!this.isExecuting) return;
 
@@ -526,38 +483,5 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     private resetExecutionState(): void {
         this.isExecuting = false;
         this.isProcessingMultipleChunks = false;
-    }
-
-    private performAdapterSwitch(newAdapterType: AdapterType): void {
-        if (this.isAlreadyUsingAdapter(newAdapterType)) {
-            console.log(`Already using ${newAdapterType} adapter`);
-            return;
-        }
-
-        this.stopReading();
-
-        try {
-            const newAdapter = createAdapter(newAdapterType, this.voiceService);
-
-            // Clean up old adapter
-            try {
-                this.adapter.destroy?.();
-            } catch (error) {
-                console.warn('Error cleaning up old adapter:', error);
-            }
-
-            this.adapter = newAdapter;
-            this.currentAdapterType = newAdapterType;
-            this.stateManager.setAdapter(newAdapterType);
-
-            this.setupAdapterCallbacks();
-
-            console.log(`Switched to ${newAdapterType} adapter`);
-            this.callbacks.onAdapterSwitch?.(newAdapterType);
-
-        } catch (error) {
-            console.error(`Failed to switch to ${newAdapterType} adapter:`, error);
-            this.stateManager.setError(`Failed to switch adapter: ${error}`);
-        }
     }
 }

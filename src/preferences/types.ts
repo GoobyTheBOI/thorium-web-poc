@@ -1,7 +1,7 @@
 import { TextChunk } from "@/types/tts";
 
 export interface IAudioPlayback {
-    play<T = void>(text: TextChunk): Promise<T>;
+    play<T = void>(input: TextChunk | Blob): Promise<T>;
     pause(): void;
     resume(): void;
     stop(): void;

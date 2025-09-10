@@ -7,7 +7,7 @@ import { TextChunk } from '@/types/tts';
 
 // Core playback functionality
 export interface IPlaybackCore {
-    play(textChunk: TextChunk): Promise<void>;
+    play(input: TextChunk | Blob): Promise<void>;
     pause(): void;
     resume(): void;
     stop(): void;

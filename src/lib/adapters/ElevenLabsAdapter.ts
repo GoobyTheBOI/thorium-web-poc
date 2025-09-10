@@ -8,6 +8,7 @@ import type {
 } from '@/preferences/types';
 import { TextChunk } from '@/types/tts';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
+import { playUniversal, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -20,7 +21,7 @@ interface PlayResult {
     audio: HTMLAudioElement;
 }
 
-export class ElevenLabsAdapter implements IPlaybackAdapter {
+export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
     private config: IAdapterConfig = {
         apiKey: process.env.ELEVENLABS_API_KEY || '',
         voiceId: 'EXAVITQu4vr4xnSDxMaL',
@@ -80,7 +81,11 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
         return voice?.gender || null;
     }
 
-    async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
+    async play<T = Buffer>(input: TextChunk | Blob): Promise<T> {
+        return await playUniversal(this, input, { success: true } as T);
+    }
+
+    async playTextChunk<T = Buffer>(textChunk: TextChunk): Promise<T> {
         this.validateAndFormatText(textChunk.text);
 
         const processedText = this.textProcessor.formatText(textChunk.text, textChunk.element || 'normal');
@@ -225,7 +230,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
         return { audioBlob, requestId };
     }
 
-    private async setupAudioPlayback(audioBlob: Blob): Promise<HTMLAudioElement> {
+    public async setupAudioPlayback(audioBlob: Blob): Promise<HTMLAudioElement> {
         const audioUrl = URL.createObjectURL(audioBlob);
         this.currentAudio = new Audio(audioUrl);
 
@@ -246,7 +251,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
         this.isPaused = isPaused;
     }
 
-    private emitEvent(event: string, info: unknown): void {
+    public emitEvent(event: string, info: unknown): void {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {
@@ -259,7 +264,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
         }
     }
 
-    private createError(code: string, message: string, details?: unknown): ITTSError {
+    public createError(code: string, message: string, details?: unknown): ITTSError {
         return {
             code,
             message,
@@ -296,7 +301,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter {
         });
     }
 
-    private cleanup(): void {
+    public cleanup(): void {
         if (this.currentAudio) {
             this.currentAudio.pause();
             this.currentAudio.src = '';

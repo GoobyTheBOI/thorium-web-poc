@@ -31,14 +31,9 @@ export class DefaultTextProcessor implements ITextProcessor {
                 return `<emphasis level="moderate">${cleanText}</emphasis>`;
             case 'bold':
                 return `<emphasis level="strong">${cleanText}</emphasis>`;
-
             case 'code':
-                // Handle code elements with slight emphasis
                 return `<emphasis level="moderate">${cleanText}</emphasis>`;
-
             default:
-                // For unknown elements, just return the clean text
-                // This ensures the reader continues instead of stopping
                 return cleanText;
         }
     }
@@ -72,7 +67,9 @@ export class DefaultTextProcessor implements ITextProcessor {
     }
 
     private detectElementType = (element?: string): ElementType => {
-        if (!element || typeof element !== 'string') return 'normal';
+        if (!element || typeof element !== 'string') {
+            return 'normal';
+        }
 
         const tagName = element.toLowerCase();
 
@@ -86,6 +83,8 @@ export class DefaultTextProcessor implements ITextProcessor {
             return 'bold';
         } else if (tagName === 'code' || tagName === 'pre' || tagName === 'kbd' || tagName === 'samp') {
             return 'code';
+        } else if (tagName === 'a') {
+            return 'normal';
         }
 
         return 'normal';

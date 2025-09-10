@@ -1,3 +1,7 @@
+/**
+ * Voice-related constants and mappings for display purposes
+ */
+
 export const LANGUAGE_DISPLAY_NAMES: { [key: string]: string } = {
   'nl': '🇳🇱 Dutch (Nederlands)',
   'en': '🇺🇸 English',

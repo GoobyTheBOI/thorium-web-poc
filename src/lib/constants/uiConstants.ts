@@ -2,7 +2,6 @@
  * UI-related constants for consistent values across the application
  */
 
-// Layout presets default values
 export const LAYOUT_CONSTANTS = {
   LINE_LENGTH_RANGE: {
     MIN: 20,

@@ -7,156 +7,134 @@ import {
     SpeechSynthesisResult,
     SpeechSynthesisOutputFormat
 } from "microsoft-cognitiveservices-speech-sdk";
+import {
+    extractBaseRequestData,
+    validateEnvironmentConfig,
+    sendAudioResponse as sendStandardAudioResponse,
+    handleTTSApiError
+} from '@/lib/utils/ttsApiUtils';
+
+interface AzureRequestData {
+    text: string;
+    voiceId?: string;
+}
 
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<Buffer | TTSErrorResponse>
 ) {
     try {
-        const {
-            text,
-            voiceId,
-        } = req.body as TTSRequestBody;
+        const requestData = validateAndExtractRequestData(req.body);
 
-        // Validate required fields
-        if (!text) {
-            return res.status(400).json({
-                error: 'Missing required fields',
-                details: 'text is required'
-            });
-        }
+        validateAzureConfiguration();
 
-        // Validate Azure configuration
-        if (!process.env.AZURE_API_KEY || !process.env.AZURE_REGION) {
-            console.error('Azure Speech credentials not configured');
-            return res.status(500).json({
-                error: 'Azure Speech API not configured',
-                details: 'Please set AZURE_SPEECH_KEY and AZURE_SPEECH_REGION in your environment variables'
-            });
-        }
-
-        // Configure Azure Speech Service
-        const speechConfig = SpeechConfig.fromSubscription(
-            process.env.AZURE_API_KEY,
-            process.env.AZURE_REGION
-        );
-
-        // Set the voice name (use voiceId if provided, otherwise default)
-        const azureVoiceName = voiceId || process.env.AZURE_VOICE_NAME || 'en-US-Adam:DragonHDLatestNeural';
-        speechConfig.speechSynthesisVoiceName = azureVoiceName;
-
-        // Set output format to MP3 for web compatibility
-        speechConfig.speechSynthesisOutputFormat = SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3;
-
-        // Create synthesizer (using null audio config to get audio data in memory instead of file)
+        const speechConfig = createSpeechConfiguration(requestData.voiceId);
         const speechSynthesizer = new SpeechSynthesizer(speechConfig, null);
 
         try {
-            // Generate SSML from text
-            const processedText = createSSML(text, azureVoiceName);
+            const audioBuffer = await synthesizeSpeech(speechSynthesizer, requestData.text, requestData.voiceId);
 
-            console.log('Processed Text:', processedText);
-
-            // Perform speech synthesis
-            const result = await new Promise<SpeechSynthesisResult>((resolve, reject) => {
-                speechSynthesizer.speakSsmlAsync(
-                    processedText,
-                    (result) => {
-                        resolve(result);
-                    },
-                    (error) => {
-                        reject(new Error(`Azure Speech synthesis failed: ${error}`));
-                    }
-                );
-            });
-
-            // Check if synthesis was successful
-            if (result.reason !== ResultReason.SynthesizingAudioCompleted) {
-                console.error('Azure Speech synthesis failed:', result.errorDetails);
-                return res.status(500).json({
-                    error: 'Speech synthesis failed',
-                    details: result.errorDetails || 'Unknown synthesis error'
-                });
-            }
-
-            // Get audio data as buffer
-            const audioBuffer = Buffer.from(result.audioData);
-
-            if (!audioBuffer || audioBuffer.length === 0) {
-                console.error('Azure Speech returned empty audio data');
-                return res.status(500).json({
-                    error: 'Empty audio data',
-                    details: 'Azure Speech Service returned no audio content'
-                });
-            }
-
-            // Set response headers
-            res.setHeader('Content-Type', 'audio/mpeg');
-            res.setHeader('Content-Length', audioBuffer.length.toString());
-            res.setHeader('x-request-id', `azure-${Date.now()}`);
-            res.setHeader('x-provider', 'azure-speech');
-
-            // Send the audio data
-            return res.status(200).send(audioBuffer);
-
+            sendAudioResponse(res, audioBuffer);
         } finally {
-            if (speechSynthesizer) {
-                speechSynthesizer.close();
-            }
+            speechSynthesizer?.close();
         }
 
     } catch (error) {
-        console.error('❌ Azure Speech API Error:', error);
+        handleTTSApiError(res, error, 'Azure Speech');
+    }
+}
 
-        let errorMessage = 'Unknown error occurred';
-        let statusCode = 500;
+/**
+ * Validates and extracts Azure-specific request data
+ */
+function validateAndExtractRequestData(body: unknown): AzureRequestData {
+    const baseData = extractBaseRequestData(body);
+    return { text: baseData.text, voiceId: baseData.voiceId };
+}
 
-        if (error instanceof Error) {
-            errorMessage = error.message;
+/**
+ * Validates that Azure configuration is properly set up
+ */
+function validateAzureConfiguration(): void {
+    validateEnvironmentConfig({
+        AZURE_API_KEY: process.env.AZURE_API_KEY,
+        AZURE_REGION: process.env.AZURE_REGION
+    }, 'Azure Speech');
+}
 
-            // Handle specific Azure errors
-            if (error.message.includes('authentication') || error.message.includes('key')) {
-                statusCode = 401;
-                errorMessage = 'Invalid or missing Azure Speech API key';
-            } else if (error.message.includes('quota') || error.message.includes('limit')) {
-                statusCode = 429;
-                errorMessage = 'Azure Speech API quota exceeded or rate limit reached';
-            } else if (error.message.includes('region')) {
-                statusCode = 400;
-                errorMessage = 'Invalid Azure region specified';
-            } else if (error.message.includes('voice')) {
-                statusCode = 400;
-                errorMessage = 'Invalid voice name specified';
-            }
-        }
+/**
+ * Creates and configures the Azure Speech Service configuration
+ */
+function createSpeechConfiguration(voiceId?: string): SpeechConfig {
+    const speechConfig = SpeechConfig.fromSubscription(
+        process.env.AZURE_API_KEY!,
+        process.env.AZURE_REGION!
+    );
 
-        return res.status(statusCode).json({
-            error: 'Failed to generate audio with Azure Speech',
-            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
-        });
+    const azureVoiceName = voiceId || process.env.AZURE_VOICE_NAME || 'en-US-AdamNeural';
+
+    speechConfig.speechSynthesisVoiceName = azureVoiceName;
+    speechConfig.speechSynthesisOutputFormat = SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3;
+
+    return speechConfig;
+}
+
+/**
+ * Performs the actual speech synthesis using Azure's Speech Service
+ */
+async function synthesizeSpeech(
+    speechSynthesizer: SpeechSynthesizer,
+    text: string,
+    voiceId?: string
+): Promise<Buffer> {
+    const azureVoiceName = voiceId || process.env.AZURE_VOICE_NAME || 'en-US-AdamNeural';
+    const processedText = createSSML(text, azureVoiceName);
+
+    const result = await new Promise<SpeechSynthesisResult>((resolve, reject) => {
+        speechSynthesizer.speakSsmlAsync(
+            processedText,
+            (result) => resolve(result),
+            (error) => reject(new Error(`Azure Speech synthesis failed: ${error}`))
+        );
+    });
+
+    if (result.reason !== ResultReason.SynthesizingAudioCompleted) {
+        throw new Error(result.errorDetails || 'Speech synthesis failed');
     }
 
-    function isSSML(text: string): boolean {
-        return text.trim().startsWith('<speak') && text.trim().endsWith('</speak>');
+    const audioBuffer = Buffer.from(result.audioData);
+
+    if (!audioBuffer || audioBuffer.length === 0) {
+        throw new Error('Azure Speech Service returned no audio content');
     }
 
-    // Helper function to create proper SSML
-    function createSSML(text: string, voiceName: string): string {
-        if (isSSML(text)) {
-            return text; // Already proper SSML
-        }
+    return audioBuffer;
+}
 
-        // Check if text contains SSML tags but isn't wrapped in <speak>
-        const hasSSMLTags = /<(break|emphasis|prosody|voice|phoneme|say-as|sub|mstts:express-as|mstts:silence)/i.test(text);
+/**
+ * Sends the audio response with Azure-specific headers
+ */
+function sendAudioResponse(res: NextApiResponse<Buffer | TTSErrorResponse>, audioBuffer: Buffer): void {
+    sendStandardAudioResponse(res, audioBuffer, 'azure-speech');
+}
 
-        if (hasSSMLTags) {
-            // Text contains SSML tags, wrap in speak tag with proper voice
-            return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-            <voice name='${voiceName}'>${text}</voice>
-        </speak>`;
-        } else {
-            // Plain text, let Azure's buildSsml handle it
-            return text;
-        }
+/**
+ * Checks if the given text is already valid SSML
+ */
+function isSSML(text: string): boolean {
+    return text.trim().startsWith('<speak') && text.trim().endsWith('</speak>');
+}
+
+/**
+ * Converts text to proper SSML format for Azure Speech Service
+ */
+function createSSML(text: string, voiceName: string): string {
+    if (isSSML(text)) {
+        return text;
     }
+
+    // Always wrap in proper SSML structure (fixes the 500 error with plain text)
+    return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
+        <voice name='${voiceName}'>${text}</voice>
+    </speak>`;
 }

@@ -1,72 +1,119 @@
 import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import type { NextApiRequest, NextApiResponse } from 'next'
+import {
+    extractBaseRequestData,
+    validateEnvironmentConfig,
+    sendAudioResponse as sendStandardAudioResponse,
+    handleTTSApiError
+} from '@/lib/utils/ttsApiUtils';
 
+interface ElevenLabsRequestData {
+    text: string;
+    voiceId: string;
+    modelId: string;
+}
 
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<Buffer | TTSErrorResponse>
 ) {
-
     try {
-        const {
-            text,
-            voiceId,
-            modelId = 'eleven_multilingual_v2',
-        } = req.body as TTSRequestBody;
+        const requestData = validateAndExtractRequestData(req.body);
 
-        if (!process.env.ELEVENLABS_API_KEY) {
-            console.warn('ElevenLabs API key not found, returning mock audio');
+        validateElevenLabsConfiguration();
 
-            return res.status(500).json({
-                error: 'ElevenLabs API key not configured',
-                details: 'Please set ELEVENLABS_API_KEY in your environment variables'
-            });
-        }
+        const elevenlabs = createElevenLabsClient();
+        const { buffer, requestId } = await synthesizeSpeech(elevenlabs, requestData);
 
-        const elevenlabs = new ElevenLabsClient({
-            apiKey: process.env.ELEVENLABS_API_KEY
-        });
-
-        const response = await elevenlabs.textToSpeech
-            .convert(voiceId, {
-                text: text,
-                modelId,
-            })
-            .withRawResponse();
-
-        const audioBuffer = await streamToBuffer(response.data);
-        const requestId = response.rawResponse.headers.get("request-id");
-
-        res.setHeader('Content-Type', 'audio/mpeg');
-        res.setHeader('x-request-id', requestId || `elevenlabs-${Date.now()}`);
-
-        return res.status(200).send(audioBuffer);
-
+        sendAudioResponse(res, buffer, requestId);
 
     } catch (error) {
-        console.error('TTS API Error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        return res.status(500).json({
-            error: 'Failed to generate audio',
-            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
-        });
+        handleTTSApiError(res, error, 'ElevenLabs');
+    }
+}
+
+/**
+ * Validates and extracts ElevenLabs-specific request data
+ */
+function validateAndExtractRequestData(body: unknown): ElevenLabsRequestData {
+    const baseData = extractBaseRequestData(body);
+
+    if (!baseData.voiceId) {
+        throw new Error('Missing required fields: voiceId is required');
     }
 
-    // Helper function to convert stream to buffer
-    async function streamToBuffer(audioStream: ReadableStream<Uint8Array>): Promise<Buffer> {
-        const chunks: Uint8Array[] = [];
-        const reader = audioStream.getReader();
+    return {
+        text: baseData.text,
+        voiceId: baseData.voiceId,
+        modelId: baseData.modelId || 'eleven_multilingual_v2'
+    };
+}
 
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-            }
-            return Buffer.concat(chunks);
-        } finally {
-            reader.releaseLock();
+/**
+ * Validates that ElevenLabs configuration is properly set up
+ */
+function validateElevenLabsConfiguration(): void {
+    validateEnvironmentConfig({
+        ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY
+    }, 'ElevenLabs');
+}
+
+/**
+ * Creates and configures the ElevenLabs client
+ */
+function createElevenLabsClient(): ElevenLabsClient {
+    return new ElevenLabsClient({
+        apiKey: process.env.ELEVENLABS_API_KEY!
+    });
+}
+
+/**
+ * Performs the actual speech synthesis using ElevenLabs
+ */
+async function synthesizeSpeech(
+    elevenlabs: ElevenLabsClient,
+    requestData: ElevenLabsRequestData
+): Promise<{ buffer: Buffer; requestId: string | null }> {
+    const response = await elevenlabs.textToSpeech
+        .convert(requestData.voiceId, {
+            text: requestData.text,
+            modelId: requestData.modelId,
+        })
+        .withRawResponse();
+
+    const audioBuffer = await streamToBuffer(response.data);
+    const requestId = response.rawResponse.headers.get("request-id");
+
+    return { buffer: audioBuffer, requestId };
+}
+
+/**
+ * Sends the audio response with ElevenLabs-specific headers
+ */
+function sendAudioResponse(
+    res: NextApiResponse<Buffer | TTSErrorResponse>,
+    buffer: Buffer,
+    requestId: string | null
+): void {
+    sendStandardAudioResponse(res, buffer, 'elevenlabs', requestId);
+}
+
+/**
+ * Converts a ReadableStream to a Buffer
+ */
+async function streamToBuffer(audioStream: ReadableStream<Uint8Array>): Promise<Buffer> {
+    const chunks: Uint8Array[] = [];
+    const reader = audioStream.getReader();
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
         }
+        return Buffer.concat(chunks);
+    } finally {
+        reader.releaseLock();
     }
 }
