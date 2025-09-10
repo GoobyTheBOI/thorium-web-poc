@@ -69,7 +69,7 @@ describe('TTS Adapters - SOLID Architecture', () => {
 
   beforeEach(() => {
     textProcessor = new DefaultTextProcessor();
-    
+
     // Create mock voice service
     mockVoiceService = {
       loadRediumVoices: jest.fn().mockResolvedValue([]),

@@ -1,11 +1,11 @@
 import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
 import { TEST_CONFIG } from '../../lib/constants/testConstants';
-import { 
-  MockAudioElement, 
-  MockTextProcessor, 
+import {
+  MockAudioElement,
+  MockTextProcessor,
   MockVoiceService,
-  ElevenLabsAdapterWithPrivates 
+  ElevenLabsAdapterWithPrivates
 } from '../types/adapterTestTypes';
 
 jest.mock('@elevenlabs/elevenlabs-js', () => ({

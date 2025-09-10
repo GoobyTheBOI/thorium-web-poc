@@ -33,7 +33,11 @@ export function useServiceManager({ onStateChange, onAdapterSwitch }: UseService
     }
 
     if (!servicesRef.current) {
-      servicesRef.current = createTTSServices(targetAdapterType);
+      const callbacks = {
+        onStateChange: onStateChangeRef.current,
+        onAdapterSwitch: onAdapterSwitchRef.current,
+      };
+      servicesRef.current = createTTSServices(targetAdapterType, callbacks);
       currentAdapterTypeRef.current = targetAdapterType;
     }
 

@@ -22,9 +22,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
 
   const generateTts = useCallback(async () => {
     if (!state.selectedVoice) {
-      const errorMessage = 'Please select a voice';
-      dispatch(setVoicesError(errorMessage));
-      onError?.(errorMessage);
+      handleError('Please select a voice');
       return;
     }
 
@@ -32,41 +30,48 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     dispatch(setVoicesError(null));
 
     try {
-      const { orchestrationService, textExtractionService, voiceHandler } = getServices();
+      const services = getServices();
+      await prepareVoice(services, state.selectedVoice);
 
-      if (state.selectedVoice) {
-        await voiceHandler.setVoice(state.selectedVoice);
-      }
-
-      const chunks = await textExtractionService.extractTextChunks();
+      const chunks = await extractTextChunks(services);
       if (chunks.length === 0) {
-        const errorMessage = 'No text found to convert';
-        dispatch(setVoicesError(errorMessage));
-        onError?.(errorMessage);
+        handleError('No text found to convert');
         return;
       }
 
-      await orchestrationService.startReading();
+      await services.orchestrationService.startReading();
+      // Note: orchestrationService handles setting isGenerating to false
+      // after the first chunk starts playing
     } catch (error) {
-      console.error('Error generating TTS:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate audio';
-      dispatch(setVoicesError(errorMessage));
-      onError?.(errorMessage);
-    } finally {
-      dispatch(setIsGenerating(false));
+      handleError(errorMessage);
     }
   }, [state.selectedVoice, getServices, dispatch, onError]);
 
+  const handleError = (errorMessage: string) => {
+    dispatch(setVoicesError(errorMessage));
+    dispatch(setIsGenerating(false));
+    onError?.(errorMessage);
+  };
+
+  const prepareVoice = async (services: TTSServices, selectedVoice: string) => {
+    await services.voiceHandler.setVoice(selectedVoice);
+  };
+
+  const extractTextChunks = async (services: TTSServices) => {
+    return await services.textExtractionService.extractTextChunks();
+  };
+
   const pause = useCallback(() => {
-    const { orchestrationService } = getServices();
-    if (state.isPlaying && !state.isPaused) {
+    if (canPause()) {
+      const { orchestrationService } = getServices();
       orchestrationService.pauseReading();
     }
   }, [getServices, state.isPlaying, state.isPaused]);
 
   const resume = useCallback(() => {
-    const { orchestrationService } = getServices();
-    if (!state.isPlaying && state.isPaused) {
+    if (canResume()) {
+      const { orchestrationService } = getServices();
       orchestrationService.resumeReading();
     }
   }, [getServices, state.isPlaying, state.isPaused]);
@@ -75,6 +80,10 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     const { orchestrationService } = getServices();
     orchestrationService.stopReading();
   }, [getServices]);
+
+  // Helper functions for state validation
+  const canPause = (): boolean => state.isPlaying && !state.isPaused;
+  const canResume = (): boolean => !state.isPlaying && state.isPaused;
 
   return {
     generateTts,

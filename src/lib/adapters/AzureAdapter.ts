@@ -78,24 +78,33 @@ export class AzureAdapter implements IPlaybackAdapter {
     }
 
     async play<T = Buffer>(textChunk: TextChunk): Promise<T> {
-        this.validateAndFormatText(textChunk.text);
+        this.validateText(textChunk.text);
+        const processedText = this.processText(textChunk);
+        const requestConfig = this.createRequestConfig(processedText);
+        const result = await this.executePlayRequest(requestConfig);
+        await this.waitForAudioToComplete();
+        return { requestId: result.requestId } as T;
+    }
 
-        const processedText = this.textProcessor.formatText(textChunk.text, textChunk.element || 'normal');
+    private validateText(text: string): void {
+        if (!this.textProcessor.validateText(text)) {
+            throw this.createError('INVALID_TEXT', 'Text validation failed');
+        }
+    }
 
-        const requestConfig: PlayRequestConfig = {
+    private processText(textChunk: TextChunk): string {
+        return this.textProcessor.formatText(
+            textChunk.text,
+            textChunk.element || 'normal'
+        );
+    }
+
+    private createRequestConfig(processedText: string): PlayRequestConfig {
+        return {
             text: processedText,
             voiceId: this.config.voiceId,
             modelId: this.config.modelId,
         };
-
-        const result = await this.executePlayRequest(requestConfig);
-        return { requestId: result.requestId } as T;
-    }
-
-    private validateAndFormatText(text: string): void {
-        if (!this.textProcessor.validateText(text)) {
-            throw this.createError('INVALID_TEXT', 'Text validation failed');
-        }
     }
 
     private async executePlayRequest(config: PlayRequestConfig): Promise<PlayResult> {
@@ -111,7 +120,7 @@ export class AzureAdapter implements IPlaybackAdapter {
                 return { requestId, audio };
 
             } catch (error) {
-                const ttsError = this.createError('PLAYBACK_FAILED', 'Failed to generate audio with ElevenLabs', error);
+                const ttsError = this.createError('PLAYBACK_FAILED', 'Failed to generate audio with Azure', error);
                 this.emitEvent('end', { success: false, error: ttsError });
                 throw ttsError;
             }
@@ -147,14 +156,18 @@ export class AzureAdapter implements IPlaybackAdapter {
         const audioUrl = URL.createObjectURL(audioBlob);
         this.currentAudio = new Audio(audioUrl);
 
-        this.setupAudioEvents();
-
-        await this.currentAudio.play();
-        this.updatePlaybackState(true, false);
-
-        this.emitEvent('play', { audio: this.currentAudio });
-
-        return this.currentAudio;
+        try {
+            this.setupAudioEvents();
+            await this.currentAudio.play();
+            this.updatePlaybackState(true, false);
+            this.emitEvent('play', { audio: this.currentAudio });
+            return this.currentAudio;
+        } catch (error) {
+            // If playback fails, clean up the audio element and URL
+            this.cleanup();
+            URL.revokeObjectURL(audioUrl);
+            throw error;
+        }
     }
 
     private updatePlaybackState(isPlaying: boolean, isPaused: boolean): void {
@@ -192,8 +205,13 @@ export class AzureAdapter implements IPlaybackAdapter {
         });
 
         this.currentAudio.addEventListener('error', (error) => {
-            this.updatePlaybackState(false, false);
-            this.emitEvent('error', { error, audio: this.currentAudio });
+            // Only emit TTS errors for audio we created (blob URLs)
+            const isOurAudio = this.currentAudio?.src?.startsWith('blob:');
+
+            if (isOurAudio) {
+                this.updatePlaybackState(false, false);
+                this.emitEvent('error', { error, audio: this.currentAudio });
+            }
         });
 
         this.currentAudio.addEventListener('loadstart', () => {
@@ -212,15 +230,36 @@ export class AzureAdapter implements IPlaybackAdapter {
         });
     }
 
+    private async waitForAudioToComplete(): Promise<void> {
+        if (!this.currentAudio || !this.isPlaying) {
+            return;
+        }
+
+        return new Promise<void>((resolve) => {
+            const handleComplete = () => {
+                this.currentAudio?.removeEventListener('ended', handleComplete);
+                this.currentAudio?.removeEventListener('error', handleComplete);
+                resolve();
+            };
+
+            this.currentAudio?.addEventListener('ended', handleComplete);
+            this.currentAudio?.addEventListener('error', handleComplete);
+        });
+    }
+
     private cleanup(): void {
         if (this.currentAudio) {
+            // Store the src for cleanup before clearing it
+            const currentSrc = this.currentAudio.src;
+
             this.currentAudio.pause();
+            this.currentAudio.currentTime = 0;
             this.currentAudio.src = '';
             this.currentAudio.load();
 
             // Revoke object URL to prevent memory leaks
-            if (this.currentAudio.src.startsWith('blob:')) {
-                URL.revokeObjectURL(this.currentAudio.src);
+            if (currentSrc && currentSrc.startsWith('blob:')) {
+                URL.revokeObjectURL(currentSrc);
             }
 
             this.currentAudio = null;
@@ -228,42 +267,46 @@ export class AzureAdapter implements IPlaybackAdapter {
         this.updatePlaybackState(false, false);
     }
 
+    // === PLAYBACK CONTROL METHODS ===
+
     pause(): void {
-        if (this.currentAudio && this.isPlaying) {
-            this.currentAudio.pause();
-            this.updatePlaybackState(false, true);
-            this.emitEvent('pause', { audio: this.currentAudio });
-            console.log('ElevenLabsAdapter: Audio paused');
-        } else {
-            console.warn('ElevenLabsAdapter: No audio to pause or already paused');
+        if (!this.canPause()) {
+            return;
         }
+
+        this.currentAudio!.pause();
+        this.updatePlaybackState(false, true);
+        this.emitEvent('pause', { audio: this.currentAudio });
     }
 
     resume(): void {
-        if (this.currentAudio && this.isPaused) {
-            this.currentAudio.play().catch(error => {
-                console.error('ElevenLabsAdapter: Resume failed:', error);
-                this.emitEvent('error', { error });
-            });
-            this.updatePlaybackState(true, false);
-            this.emitEvent('resume', { audio: this.currentAudio });
-            console.log('ElevenLabsAdapter: Audio resumed');
-        } else {
-            console.warn('ElevenLabsAdapter: No audio to resume or not paused');
+        if (!this.canResume()) {
+            return;
         }
+
+        this.currentAudio!.play().catch(error => {
+            console.error('AzureAdapter: Resume failed:', error);
+            this.emitEvent('error', { error });
+        });
+        this.updatePlaybackState(true, false);
+        this.emitEvent('resume', { audio: this.currentAudio });
     }
 
     stop(): void {
-        if (this.currentAudio) {
-            this.currentAudio.pause();
-            this.currentAudio.currentTime = 0;
-            this.updatePlaybackState(false, false);
-            this.emitEvent('stop', { audio: this.currentAudio });
-            console.log('ElevenLabsAdapter: Audio stopped');
-        } else {
-            console.warn('ElevenLabsAdapter: No audio to stop');
+        if (!this.currentAudio) {
+            return;
         }
+
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+        this.updatePlaybackState(false, false);
+        this.emitEvent('stop', { audio: this.currentAudio });
+
+        // Ensure complete cleanup to prevent multiple audio instances
+        this.cleanup();
     }
+
+    // === STATE QUERY METHODS ===
 
     getIsPlaying(): boolean {
         return this.isPlaying;
@@ -275,6 +318,16 @@ export class AzureAdapter implements IPlaybackAdapter {
 
     getCurrentAudio(): HTMLAudioElement | null {
         return this.currentAudio;
+    }
+
+    // === HELPER METHODS ===
+
+    private canPause(): boolean {
+        return this.currentAudio !== null && this.isPlaying && !this.isPaused;
+    }
+
+    private canResume(): boolean {
+        return this.currentAudio !== null && !this.isPlaying && this.isPaused;
     }
 
     on(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void): void {
@@ -297,6 +350,5 @@ export class AzureAdapter implements IPlaybackAdapter {
     destroy(): void {
         this.cleanup();
         this.eventListeners.clear();
-        console.log('AzureAdapter: Destroyed and cleaned up');
     }
 }

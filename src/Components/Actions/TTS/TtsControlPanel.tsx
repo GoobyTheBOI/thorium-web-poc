@@ -20,27 +20,50 @@ export const TtsControlPanel: React.FC<TtsControlPanelProps> = ({
   onResume,
   onStop
 }) => {
+  // Helper functions for button states and text
+  const getStartButtonText = (): string => {
+    if (ttsState.isGenerating) return 'Generating...';
+    if (ttsState.isPlaying) return 'Playing...';
+    return 'Start TTS';
+  };
+
+  const isStartButtonDisabled = (): boolean => {
+    return !selectedVoice || ttsState.isGenerating || ttsState.isPlaying;
+  };
+
+  const getPauseResumeButtonText = (): string => {
+    return ttsState.isPaused ? 'Resume' : 'Pause';
+  };
+
+  const getPauseResumeAction = () => {
+    return ttsState.isPaused ? onResume : onPause;
+  };
+
+  const isControlButtonDisabled = (): boolean => {
+    return !ttsState.isPlaying && !ttsState.isPaused;
+  };
+
   return (
     <div className={styles.buttonContainer}>
       <ThActionButton
-        isDisabled={!selectedVoice || ttsState.isGenerating || ttsState.isPlaying}
+        isDisabled={isStartButtonDisabled()}
         onPress={onGenerateTts}
         style={{ backgroundColor: "#4CAF50", color: "white" }}
       >
-        {ttsState.isGenerating ? 'Generating...' : 'Start TTS'}
+        {getStartButtonText()}
       </ThActionButton>
 
       <ThActionButton
-        onPress={ttsState.isPaused ? onResume : onPause}
-        isDisabled={!ttsState.isPlaying && !ttsState.isPaused}
+        onPress={getPauseResumeAction()}
+        isDisabled={isControlButtonDisabled()}
         style={{ backgroundColor: "#FF9800", color: "white" }}
       >
-        {ttsState.isPaused ? 'Resume' : 'Pause'}
+        {getPauseResumeButtonText()}
       </ThActionButton>
 
       <ThActionButton
         onPress={onStop}
-        isDisabled={!ttsState.isPlaying && !ttsState.isPaused}
+        isDisabled={isControlButtonDisabled()}
         style={{ backgroundColor: "#f44336", color: "white" }}
       >
         Stop

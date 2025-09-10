@@ -1,10 +1,10 @@
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
 import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
 import { TEST_CONFIG } from '../../lib/constants/testConstants';
-import { 
-  MockAudioElement, 
-  MockTextProcessor, 
-  AzureAdapterWithPrivates 
+import {
+  MockAudioElement,
+  MockTextProcessor,
+  AzureAdapterWithPrivates
 } from '../types/adapterTestTypes';
 
 jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({

@@ -22,13 +22,13 @@ export interface TtsPlaybackResult {
     requestId: string | null;
 }
 
-// Constants
+// TODO: Move this file to @/preferences/constants.ts and the interface to @/preferences/types.ts and edit imports accordingly
 export const TTS_CONSTANTS = {
     WORDS_PER_MINUTE: 150,
     MAX_TEXT_LENGTH: 5000,
     DEFAULT_MODEL: 'eleven_multilingual_v2',
     DEFAULT_VOICE_ID: 'JBFqnCBsd6RMkjVDRZzb',
-    CHUNK_SIZE_FOR_TESTING: 1,
+    CHUNK_SIZE_FOR_TESTING: 2,
     MAX_CHUNKS: 5,
     // Reading modes
     ENABLE_WHOLE_PAGE_READING: false,

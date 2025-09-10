@@ -1,6 +1,6 @@
 "use client";
 
-import { 
+import {
   StatefulSettingsItemProps,
   StatefulNumberField,
   useEpubNavigator,
@@ -34,34 +34,34 @@ export const PlaygroundLineLengths = ({ standalone = true }: StatefulSettingsIte
     <StatefulNumberField
       standalone={ standalone }
       label={ t("reader.layoutPresets.minimalLineLength.title") }
-      value={ minLineLength } 
-      onChange={async (value: number) => await updatePreference("min", value)} 
+      value={ minLineLength }
+      onChange={async (value: number) => await updatePreference("min", value)}
       steppers={{
         decrementLabel: t("reader.layoutPresets.minimalLineLength.decrease"),
         incrementLabel: t("reader.layoutPresets.minimalLineLength.increase")
       }}
       range={ [lineLengthRangeConfig.range[0], optimalLineLength] }
       step={ lineLengthRangeConfig.step }
-    /> 
+    />
     <PlaygroundMinChars />
 
     <StatefulNumberField
       standalone={ standalone }
       label={ t("reader.layoutPresets.optimalLineLength.title") }
-      value={ optimalLineLength } 
-      onChange={async (value: number) => await updatePreference("optimal", value)} 
+      value={ optimalLineLength }
+      onChange={async (value: number) => await updatePreference("optimal", value)}
       steppers={{
         decrementLabel: t("reader.layoutPresets.optimalLineLength.decrease"),
         incrementLabel: t("reader.layoutPresets.optimalLineLength.increase")
       }}
       range={ lineLengthRangeConfig.range }
       step={ lineLengthRangeConfig.step }
-    /> 
-    
+    />
+
     <StatefulNumberField
       standalone={ standalone }
       label={ t("reader.layoutPresets.maximalLineLength.title") }
-      value={ maxLineLength } 
+      value={ maxLineLength }
       onChange={async (value: number) => await updatePreference("max", value)}
       steppers={{
         decrementLabel: t("reader.layoutPresets.maximalLineLength.decrease"),
@@ -69,7 +69,7 @@ export const PlaygroundLineLengths = ({ standalone = true }: StatefulSettingsIte
       }}
       range={ [optimalLineLength, lineLengthRangeConfig.range[1]] }
       step={ lineLengthRangeConfig.step }
-    /> 
+    />
     <PlaygroundMaxChars />
     </>
   )

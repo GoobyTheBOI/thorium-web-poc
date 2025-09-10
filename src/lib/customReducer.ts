@@ -20,7 +20,7 @@ const customReducer = createSlice({
   },
 });
 
-export const { 
+export const {
   setLayoutPreset
 } = customReducer.actions;
 

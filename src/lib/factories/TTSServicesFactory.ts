@@ -1,6 +1,6 @@
 import { AdapterType, createAdapter } from "@/lib/factories/AdapterFactory";
 import { EpubTextExtractionService } from "@/lib/services/TextExtractionService";
-import { TtsOrchestrationService } from "@/lib/services/TtsOrchestrationService";
+import { TtsOrchestrationService, TtsCallbacks } from "@/lib/services/TtsOrchestrationService";
 import { VoiceManagementService } from "@/lib/services/VoiceManagementService";
 import { TtsKeyboardHandler } from "@/lib/handlers/TtsKeyboardHandler";
 import { VoiceHandler } from "@/lib/handlers/VoiceHandler";
@@ -16,7 +16,7 @@ export interface TTSServices {
     currentAdapter: IPlaybackAdapter;
 }
 
-export function createTTSServices(adapterType: AdapterType): TTSServices {
+export function createTTSServices(adapterType: AdapterType, callbacks?: TtsCallbacks): TTSServices {
     const textExtractionService = new EpubTextExtractionService();
     const voiceManagementService = new VoiceManagementService();
     const stateManager = new TtsStateManager();
@@ -28,7 +28,8 @@ export function createTTSServices(adapterType: AdapterType): TTSServices {
         textExtractionService,
         stateManager,
         voiceManagementService,
-        adapterType
+        adapterType,
+        callbacks
     );
 
     const keyboardHandler = new TtsKeyboardHandler(orchestrationService);

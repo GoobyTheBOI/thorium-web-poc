@@ -9,7 +9,7 @@ import NewspaperIcon from "./assets/icons/newspaper.svg";
 import RangeIcon from "./assets/icons/arrow_range.svg";
 import TuneIcon from "./assets/icons/tune.svg";
 
-import { 
+import {
   StatefulRadioGroup,
   useI18n,
   useAppSelector
@@ -27,7 +27,7 @@ export const PlaygroundLayoutPresetsGroup = () => {
 
   return(
     <>
-    <StatefulRadioGroup 
+    <StatefulRadioGroup
       standalone={ true }
       label={ t("reader.layoutPresets.title") }
       orientation="horizontal"

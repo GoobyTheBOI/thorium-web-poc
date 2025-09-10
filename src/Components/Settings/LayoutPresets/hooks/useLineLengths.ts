@@ -2,10 +2,10 @@ import { useEffect, useCallback } from "react";
 
 import { LayoutPresets, LAYOUT_PRESETS_VALUES } from "@/preferences/enums";
 
-import { 
-  useEpubNavigator, 
-  useAppDispatch, 
-  useAppSelector, 
+import {
+  useEpubNavigator,
+  useAppDispatch,
+  useAppSelector,
   setLineLength,
   usePreferences
 } from "@edrlab/thorium-web/epub";
@@ -18,7 +18,7 @@ export const useLineLengths = () => {
   const RSPrefs = usePreferences();
   const layoutPreset = useAppSelector(state => state.custom.layoutPreset);
   const lineLength = useAppSelector(state => state.settings.lineLength);
-  
+
   // On mount and when layoutPreset changes, sync line lengths
   useEffect(() => {
     // If not custom, submit the preset values
@@ -29,24 +29,24 @@ export const useLineLengths = () => {
         optimalLineLength: preset.OPTIMAL,
         maximalLineLength: preset.MAX
       });
-    
+
     // Always sync Redux with current preferences
     const minimal = getSetting("minimalLineLength");
     const optimal = getSetting("optimalLineLength");
     const maximal = getSetting("maximalLineLength");
-    
+
       dispatch(setLineLength({
         key: "min",
         value: minimal ?? RSPrefs.typography.minimalLineLength,
         isDisabled: minimal === null
       }));
-    
+
       dispatch(setLineLength({
         key: "optimal",
         value: optimal ?? RSPrefs.typography.optimalLineLength,
         isDisabled: false
       }));
-    
+
       dispatch(setLineLength({
         key: "max",
         value: maximal ?? RSPrefs.typography.maximalLineLength,
@@ -67,7 +67,7 @@ export const useLineLengths = () => {
   // Update preset (used by PlaygroundLayoutPresets)
   const updatePreset = useCallback(async (value: LayoutPresets) => {
     dispatch(setLayoutPreset(value));
-    
+
     // If the preset is not "custom", update the preferences with the preset values
     if (value !== LayoutPresets.CUSTOM) {
       const preset = LAYOUT_PRESETS_VALUES[value];
@@ -85,14 +85,14 @@ export const useLineLengths = () => {
     if (layoutPreset !== LayoutPresets.CUSTOM) {
       dispatch(setLayoutPreset(LayoutPresets.CUSTOM));
     }
-    
+
     const prefKey = getPreferenceKey(type);
-    
+
     // Submit to preferences
     await submitPreferences({
       [prefKey]: value
     });
-    
+
     // Update Redux
     dispatch(setLineLength({
       key: type,
@@ -104,18 +104,18 @@ export const useLineLengths = () => {
   // Toggle min/max chars (used by PlaygroundMinChars/PlaygroundMaxChars)
   const toggleLineLength = useCallback(async (type: "min" | "max", isSelected: boolean) => {
     const prefKey = getPreferenceKey(type);
-    
+
     // Switch to custom layout when toggling min/max
     if (layoutPreset !== LayoutPresets.CUSTOM) {
       dispatch(setLayoutPreset(LayoutPresets.CUSTOM));
     }
-    
+
     if (isSelected) {
       // When disabling (switch is selected means disabled in UI)
       await submitPreferences({
         [prefKey]: null
       });
-      
+
       // Update Redux to mark as disabled
       dispatch(setLineLength({
         key: type,
@@ -125,12 +125,12 @@ export const useLineLengths = () => {
       // When enabling (switch is not selected means enabled in UI)
       // Use the exact value from Redux store
       const currentValue = lineLength?.[type]?.chars;
-      
+
       // Submit the value to preferences
       await submitPreferences({
         [prefKey]: currentValue
       });
-      
+
       // Update Redux to enable
       dispatch(setLineLength({
         key: type,
@@ -140,7 +140,7 @@ export const useLineLengths = () => {
     }
   }, [layoutPreset, dispatch, submitPreferences, lineLength]);
 
-  return { 
+  return {
     updatePreset,
     updatePreference,
     toggleLineLength
