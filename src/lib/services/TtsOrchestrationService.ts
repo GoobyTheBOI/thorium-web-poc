@@ -5,6 +5,7 @@ import { TtsStateManager, TtsState } from '../managers/TtsStateManager';
 import { createAdapter, AdapterType } from '../factories/AdapterFactory';
 import { VoiceManagementService } from './VoiceManagementService';
 import { TextChunk } from '@/types/tts';
+import { extractErrorMessage } from '@/lib/utils/errorUtils';
 
 // Constants for TTS error detection
 const TTS_ERROR_KEYWORDS = ['TTS', 'audio', 'speech', 'voice'];
@@ -25,6 +26,8 @@ export interface ITtsOrchestrationService {
     switchAdapter(adapterType?: AdapterType): void;
     getCurrentAdapterType(): AdapterType | null;
     getState(): TtsState;
+    setMockTTS(enabled: boolean): void;
+    isMockTTSEnabled(): boolean;
     destroy(): void;
 }
 
@@ -33,6 +36,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     private isProcessingMultipleChunks: boolean = false;
     private callbacks: TtsCallbacks;
     private currentAdapterType: AdapterType | null = null;
+    private useMockTTS: boolean = false;
 
     constructor(
         private adapter: IPlaybackAdapter,
@@ -40,10 +44,12 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
         private stateManager: TtsStateManager,
         private voiceService: VoiceManagementService,
         initialAdapterType?: AdapterType,
-        callbacks?: TtsCallbacks
+        callbacks?: TtsCallbacks,
+        useMockTTS?: boolean
     ) {
         this.callbacks = callbacks || {};
         this.currentAdapterType = initialAdapterType || null;
+        this.useMockTTS = useMockTTS ?? TTS_CONSTANTS.ENABLE_MOCK_TTS;
 
         // Set initial state
         if (initialAdapterType) {
@@ -94,47 +100,83 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     }
 
     /**
-     * Processes multiple text chunks with parallel audio generation for fluent playback.
-     * Generates audio for all chunks in parallel while playing them sequentially.
+     * Processes multiple text chunks sequentially using the adapter's play method.
      */
     private async processAllChunks(chunks: TextChunk[]): Promise<void> {
         this.isProcessingMultipleChunks = chunks.length > 1;
 
-        // Start parallel audio generation for all chunks
-        const audioGenerationPromises = this.startParallelAudioGeneration(chunks);
-
-        // Play chunks sequentially as their audio becomes available
-        await this.playChunksSequentially(chunks, audioGenerationPromises);
-    }
-
-    /**
-     * Start generating audio for all chunks in parallel.
-     */
-    private startParallelAudioGeneration(chunks: TextChunk[]): Promise<Blob | null>[] {
-        return chunks.map(async (chunk, index) => {
-            try {
-                return await this.generateAudioOnly(chunk);;
-            } catch (error) {
-                this.handleExecutionError(error);
-                return null;
-            }
-        });
-    }
-
-    /**
-     * Play chunks sequentially as their audio becomes available.
-     */
-    private async playChunksSequentially(
-        chunks: TextChunk[],
-        audioPromises: Promise<Blob | null>[]
-    ): Promise<void> {
+        // Process chunks sequentially using the adapter's play method
         for (let i = 0; i < chunks.length; i++) {
             if (!this.isExecuting) {
                 break;
             }
 
-            await this.playChunkWhenReady(chunks[i], audioPromises[i], i + 1);
+            await this.playChunkDirectly(chunks[i], i + 1);
             this.handleStateTransitionAfterFirstChunk(i);
+        }
+    }
+
+    /**
+     * Handle completion of current page and potentially navigate to next page.
+     */
+    private async handlePageCompletion(): Promise<void> {
+        try {
+            const hasNextPage = await this.textExtractor.hasNextPage();
+            if (!hasNextPage) {
+                return;
+            }
+
+            const navigated = await this.textExtractor.navigateToNextPage();
+            if (!navigated) {
+                return;
+            }
+
+            await this.waitForPageLoad();
+            await this.continueReadingNewPage();
+        } catch (error) {
+            this.handleExecutionError(error);
+        }
+    }
+
+    /**
+     * Continue reading from the newly loaded page.
+     */
+    private async continueReadingNewPage(): Promise<void> {
+        try {
+            const newPageChunks = await this.textExtractor.extractTextChunks();
+            if (newPageChunks.length === 0) {
+                return;
+            }
+
+            // Process new page chunks sequentially
+            for (let i = 0; i < newPageChunks.length; i++) {
+                if (!this.isExecuting) {
+                    break;
+                }
+                await this.playChunkDirectly(newPageChunks[i], i + 1);
+            }
+        } catch (error) {
+            this.handleExecutionError(error);
+        }
+    }
+
+    /**
+     * Wait for page to load after navigation.
+     */
+    private async waitForPageLoad(): Promise<void> {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (attempts < maxAttempts) {
+            const readerElement = this.textExtractor.getCurrentReaderElement();
+            if (readerElement && readerElement.textContent?.trim()) {
+                return;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+            attempts++;
         }
     }
 
@@ -148,158 +190,87 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     }
 
     /**
-     * Play a single chunk when its audio is ready.
+     * Play a single chunk directly using the adapter's play method.
      */
-    private async playChunkWhenReady(
-        chunk: TextChunk,
-        audioPromise: Promise<Blob | null>,
-        chunkNumber: number,
-    ): Promise<void> {
+    private async playChunkDirectly(chunk: TextChunk, chunkNumber: number): Promise<void> {
         try {
-            const audioBlob = await this.waitForAudioGeneration(audioPromise);
-
-            if (audioBlob === null || audioBlob.size == null) {
-                return;
+            if (this.useMockTTS) {
+                // For mock TTS, generate and play mock audio
+                const mockBlob = this.generateMockAudio(chunk);
+                await this.adapter.play(mockBlob);
+            } else {
+                // Use the adapter's play method directly with TextChunk
+                await this.adapter.play(chunk);
             }
-
-            await this.playGeneratedAudio(audioBlob, chunk);
-
         } catch (error) {
             this.handleExecutionError(error);
         }
     }
 
     /**
-     * Wait for audio generation to complete and log progress.
+     * Generate mock audio blob for testing purposes.
      */
-    private async waitForAudioGeneration(
-        audioPromise: Promise<Blob | null>,
-    ): Promise<Blob | null> {
-        return await audioPromise;
-    }
+    private generateMockAudio(chunk: TextChunk): Blob {
+        const text = chunk.text || '';
+        const duration = Math.max(1, Math.min(3, text.length / 30));
+        const sampleRate = 22050;
+        const samples = Math.floor(sampleRate * duration);
 
-    /**
-     * Play the generated audio for a chunk.
-     */
-    private async playGeneratedAudio(
-        audioBlob: Blob,
-        chunk: TextChunk,
-    ): Promise<void> {
-        await this.playPreGeneratedAudio(audioBlob, chunk);
-    }
+        const frequency = 440 + (this.simpleHash(text) % 5) * 50;
+        const audioData = new Float32Array(samples);
 
-
-    /**
-     * Generate audio for a chunk without playing it (for parallel processing).
-     */
-    private async generateAudioOnly(chunk: TextChunk): Promise<Blob> {
-        const processedText = this.processTextChunk(chunk);
-        const requestConfig = this.createAudioRequestConfig(processedText);
-
-        const response = await fetch('/api/tts/azure', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestConfig),
-        });
-
-        if (!response.ok) {
-            throw new Error(`TTS API request failed: ${response.status} ${response.statusText}`);
+        for (let i = 0; i < samples; i++) {
+            audioData[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 0.2;
         }
 
-        return await response.blob();
+        const wavBuffer = this.createWavBuffer(audioData, sampleRate);
+        return new Blob([wavBuffer], { type: 'audio/wav' });
     }
 
-    /**
-     * Create the request configuration for audio generation.
-     */
-    private createAudioRequestConfig(processedText: string) {
-        return {
-            text: processedText,
-            voiceId: 'en-US-AriaNeural', // Default voice for generation
-        };
-    }
-
-    /**
-     * Process text chunk using the same logic as the adapter's text processor.
-     */
-    private processTextChunk(chunk: TextChunk): string {
-        const text = chunk.text?.trim() || '';
-        if (!text) return '';
-
-        const cleanText = this.escapeSSML(text);
-        return this.applyElementFormatting(cleanText, chunk.element);
-    }
-
-    /**
-     * Apply SSML formatting based on element type.
-     */
-    private applyElementFormatting(cleanText: string, element?: string): string {
-        switch (element?.toLowerCase()) {
-            case 'h1':
-            case 'h2':
-            case 'h3':
-            case 'h4':
-            case 'h5':
-            case 'h6':
-                return this.formatHeading(cleanText);
-            case 'p':
-                return this.formatParagraph(cleanText);
-            case 'code':
-            case 'pre':
-            case 'kbd':
-            case 'samp':
-                return this.formatCode(cleanText);
-            case 'i':
-            case 'em':
-                return this.formatItalic(cleanText);
-            case 'b':
-            case 'strong':
-                return this.formatBold(cleanText);
-            default:
-                return cleanText;
+    private simpleHash(str: string): number {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash = hash & hash;
         }
+        return Math.abs(hash);
     }
 
-    /**
-     * SSML formatting methods for different element types.
-     */
-    private formatHeading(text: string): string {
-        return `<break time="0.5s"/><emphasis level="strong"><prosody rate="slow">${text}</prosody></emphasis><break time="1s"/>`;
-    }
+    private createWavBuffer(audioData: Float32Array, sampleRate: number): ArrayBuffer {
+        const length = audioData.length;
+        const buffer = new ArrayBuffer(44 + length * 2);
+        const view = new DataView(buffer);
 
-    private formatParagraph(text: string): string {
-        return `${text}<break time="0.3s"/>`;
-    }
+        // WAV header
+        this.writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + length * 2, true);
+        this.writeString(view, 8, 'WAVE');
+        this.writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        this.writeString(view, 36, 'data');
+        view.setUint32(40, length * 2, true);
 
-    private formatCode(text: string): string {
-        return `<emphasis level="moderate">${text}</emphasis>`;
-    }
-
-    private formatItalic(text: string): string {
-        return `<emphasis level="moderate">${text}</emphasis>`;
-    }
-
-    private formatBold(text: string): string {
-        return `<emphasis level="strong">${text}</emphasis>`;
-    }
-
-    /**
-     * Escape SSML special characters.
-     */
-    private escapeSSML(text: string): string {
-        if (!text || typeof text !== 'string') {
-            return '';
+        // Audio data
+        let offset = 44;
+        for (let i = 0; i < length; i++) {
+            const sample = Math.max(-1, Math.min(1, audioData[i]));
+            view.setInt16(offset, sample * 0x7FFF, true);
+            offset += 2;
         }
-        return text.replace(/[<>&"']/g, (match) => {
-            const escapeMap: Record<string, string> = {
-                '<': '&lt;',
-                '>': '&gt;',
-                '&': '&amp;',
-                '"': '&quot;',
-                "'": '&apos;'
-            };
-            return escapeMap[match] || match;
-        });
+
+        return buffer;
+    }
+
+    private writeString(view: DataView, offset: number, string: string): void {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
     }
 
     /**
@@ -311,7 +282,10 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
     private handleExecutionError(error: unknown): void {
         console.error('TTS Orchestration: Failed to start reading', error);
-        this.stateManager.setError(`Failed to start reading: ${error}`);
+
+        const errorMessage = extractErrorMessage(error, 'Failed to start reading');
+
+        this.stateManager.setError(errorMessage);
         throw error;
     }
 
@@ -375,9 +349,27 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
         return this.stateManager.getState();
     }
 
+    // Mock TTS control methods
+    setMockTTS(enabled: boolean): void {
+        this.useMockTTS = enabled;
+    }
+
+    isMockTTSEnabled(): boolean {
+        return this.useMockTTS;
+    }
+
     // Adapter management methods
     switchAdapter(adapterType?: AdapterType): void {
-        this.callbacks.onAdapterSwitch?.(adapterType || 'elevenlabs');
+        let targetAdapter: AdapterType;
+
+        if (adapterType) {
+            targetAdapter = adapterType;
+        } else {
+            // Cycle to the next adapter
+            targetAdapter = this.currentAdapterType === 'elevenlabs' ? 'azure' : 'elevenlabs';
+        }
+
+        this.callbacks.onAdapterSwitch?.(targetAdapter);
     }
 
     getCurrentAdapterType(): AdapterType | null {

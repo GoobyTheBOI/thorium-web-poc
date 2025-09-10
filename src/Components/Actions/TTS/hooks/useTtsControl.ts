@@ -6,6 +6,7 @@ import {
   setIsGenerating,
   setVoicesError
 } from '@/lib/ttsReducer';
+import { extractErrorMessage } from '@/lib/utils/errorUtils';
 
 export interface UseTtsControlProps {
   state: TtsReducerState;
@@ -43,7 +44,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
       // Note: orchestrationService handles setting isGenerating to false
       // after the first chunk starts playing
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate audio';
+      const errorMessage = extractErrorMessage(error, 'Failed to generate audio');
       handleError(errorMessage);
     }
   }, [state.selectedVoice, getServices, dispatch, onError]);

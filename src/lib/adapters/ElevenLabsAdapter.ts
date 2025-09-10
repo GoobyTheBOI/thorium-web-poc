@@ -9,6 +9,7 @@ import type {
 import { TextChunk } from '@/types/tts';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 import { playUniversal, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
+import { createNetworkAwareError, createError } from '@/lib/utils/errorUtils';
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -169,7 +170,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
 
     private validateAndFormatText(text: string): void {
         if (!this.textProcessor.validateText(text)) {
-            throw this.createError('INVALID_TEXT', 'Text validation failed');
+            throw createError('INVALID_TEXT', 'Text validation failed');
         }
     }
 
@@ -198,7 +199,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
             return { requestId, audio };
 
         } catch (error) {
-            const ttsError = this.createError('PLAYBACK_FAILED', 'Failed to generate audio with ElevenLabs', error);
+            const ttsError = createNetworkAwareError(error, 'ElevenLabs');
             this.emitEvent('end', { success: false, error: ttsError });
             throw ttsError;
         }
@@ -262,14 +263,6 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
                 }
             });
         }
-    }
-
-    public createError(code: string, message: string, details?: unknown): ITTSError {
-        return {
-            code,
-            message,
-            details: process.env.NODE_ENV === 'development' ? details : undefined
-        };
     }
 
     private setupAudioEvents(): void {

@@ -29,17 +29,6 @@ export class TtsKeyboardHandler {
     private setupTtsShortcuts(): void {
         const shortcuts: KeyboardShortcut[] = [
             {
-                key: ' ',
-                action: () => {
-                    if (this.orchestrationService.isPlaying()) {
-                        this.orchestrationService.pauseReading();
-                    } else if (this.orchestrationService.isPaused()) {
-                        this.orchestrationService.resumeReading();
-                    }
-                },
-                description: 'Play/Pause TTS'
-            },
-            {
                 key: 's',
                 shiftKey: true,
                 action: () => this.orchestrationService.stopReading(),
@@ -49,22 +38,25 @@ export class TtsKeyboardHandler {
                 key: 'p',
                 shiftKey: true,
                 action: () => {
-                    const now = Date.now();
-                    if (now - this.lastStartTime < this.START_THROTTLE_MS) {
-                        console.log('TTS: Start command throttled to prevent duplicate execution');
-                        return;
-                    }
+                    if (!this.orchestrationService.isPlaying() && !this.orchestrationService.isPaused()) {
+                        // Start reading if nothing is playing or paused
+                        const now = Date.now();
+                        if (now - this.lastStartTime < this.START_THROTTLE_MS) {
+                            return;
+                        }
 
-                    if (!this.orchestrationService.isPlaying() &&
-                        !this.orchestrationService.isPaused()) {
                         this.lastStartTime = now;
                         console.log('TTS: Starting reading via keyboard shortcut');
                         this.orchestrationService.startReading().catch(console.error);
-                    } else {
-                        console.log('TTS: Already playing or paused, ignoring start command');
+                    } else if (this.orchestrationService.isPlaying()) {
+                        // Pause if currently playing
+                        this.orchestrationService.pauseReading();
+                    } else if (this.orchestrationService.isPaused()) {
+                        // Resume if paused
+                        this.orchestrationService.resumeReading();
                     }
                 },
-                description: 'Start TTS Reading'
+                description: 'Start/Pause/Resume TTS'
             },
             {
                 key: 'escape',
@@ -91,6 +83,5 @@ export class TtsKeyboardHandler {
         ];
 
         this.keyboardHandler.register(shortcuts);
-        console.log('TTS keyboard shortcuts registered');
     }
 }

@@ -40,6 +40,8 @@ describe('TtsKeyboardHandler', () => {
       getCurrentAdapterType: jest.fn(),
       getState: jest.fn(),
       destroy: jest.fn(),
+      setMockTTS: jest.fn(),
+      isMockTTSEnabled: jest.fn(),
     };
 
     // Mock console methods
@@ -69,11 +71,10 @@ describe('TtsKeyboardHandler', () => {
       const registerCall = mockKeyboardHandlerInstance.register.mock.calls[0];
       const shortcuts = registerCall[0];
 
-      expect(shortcuts).toHaveLength(5);
+      expect(shortcuts).toHaveLength(4);
       expect(shortcuts.map((s: KeyboardShortcut) => s.description)).toEqual([
-        'Play/Pause TTS',
         'Stop TTS',
-        'Start TTS Reading',
+        'Start/Pause/Resume TTS',
         'Emergency Stop TTS',
         'Switch TTS Adapter'
       ]);
@@ -119,44 +120,6 @@ describe('TtsKeyboardHandler', () => {
       shortcuts = registerCall[0];
     });
 
-    describe('Space key (Play/Pause)', () => {
-      let spaceShortcut: KeyboardShortcut;
-
-      beforeEach(() => {
-        spaceShortcut = shortcuts.find(s => s.key === ' ')!;
-      });
-
-      it('should pause when playing', () => {
-        mockOrchestrationService.isPlaying.mockReturnValue(true);
-        mockOrchestrationService.isPaused.mockReturnValue(false);
-
-        spaceShortcut.action();
-
-        expect(mockOrchestrationService.pauseReading).toHaveBeenCalled();
-        expect(mockOrchestrationService.resumeReading).not.toHaveBeenCalled();
-      });
-
-      it('should resume when paused', () => {
-        mockOrchestrationService.isPlaying.mockReturnValue(false);
-        mockOrchestrationService.isPaused.mockReturnValue(true);
-
-        spaceShortcut.action();
-
-        expect(mockOrchestrationService.resumeReading).toHaveBeenCalled();
-        expect(mockOrchestrationService.pauseReading).not.toHaveBeenCalled();
-      });
-
-      it('should do nothing when neither playing nor paused', () => {
-        mockOrchestrationService.isPlaying.mockReturnValue(false);
-        mockOrchestrationService.isPaused.mockReturnValue(false);
-
-        spaceShortcut.action();
-
-        expect(mockOrchestrationService.pauseReading).not.toHaveBeenCalled();
-        expect(mockOrchestrationService.resumeReading).not.toHaveBeenCalled();
-      });
-    });
-
     describe('Shift+S (Stop)', () => {
       let stopShortcut: KeyboardShortcut;
 
@@ -176,7 +139,7 @@ describe('TtsKeyboardHandler', () => {
       });
     });
 
-    describe('Shift+P (Start Reading)', () => {
+    describe('Shift+P (Start/Pause/Resume)', () => {
       let startShortcut: KeyboardShortcut;
 
       beforeEach(() => {
@@ -195,24 +158,26 @@ describe('TtsKeyboardHandler', () => {
         expect(mockConsoleLog).toHaveBeenCalledWith('TTS: Starting reading via keyboard shortcut');
       });
 
-      it('should not start when already playing', async () => {
+      it('should pause when already playing', async () => {
         mockOrchestrationService.isPlaying.mockReturnValue(true);
         mockOrchestrationService.isPaused.mockReturnValue(false);
 
         await startShortcut.action();
 
+        expect(mockOrchestrationService.pauseReading).toHaveBeenCalled();
         expect(mockOrchestrationService.startReading).not.toHaveBeenCalled();
-        expect(mockConsoleLog).toHaveBeenCalledWith('TTS: Already playing or paused, ignoring start command');
+        expect(mockOrchestrationService.resumeReading).not.toHaveBeenCalled();
       });
 
-      it('should not start when paused', async () => {
+      it('should resume when paused', async () => {
         mockOrchestrationService.isPlaying.mockReturnValue(false);
         mockOrchestrationService.isPaused.mockReturnValue(true);
 
         await startShortcut.action();
 
+        expect(mockOrchestrationService.resumeReading).toHaveBeenCalled();
         expect(mockOrchestrationService.startReading).not.toHaveBeenCalled();
-        expect(mockConsoleLog).toHaveBeenCalledWith('TTS: Already playing or paused, ignoring start command');
+        expect(mockOrchestrationService.pauseReading).not.toHaveBeenCalled();
       });
 
       it('should throttle rapid start commands', async () => {
@@ -253,7 +218,7 @@ describe('TtsKeyboardHandler', () => {
       it('should have correct configuration', () => {
         expect(startShortcut.key).toBe('p');
         expect(startShortcut.shiftKey).toBe(true);
-        expect(startShortcut.description).toBe('Start TTS Reading');
+        expect(startShortcut.description).toBe('Start/Pause/Resume TTS');
       });
     });
 
@@ -392,7 +357,7 @@ describe('TtsKeyboardHandler', () => {
       const shortcuts = registerCall[0];
 
       expect(shortcuts).toBeInstanceOf(Array);
-      expect(shortcuts).toHaveLength(5);
+      expect(shortcuts).toHaveLength(4);
 
       // Verify all shortcuts have required properties
       shortcuts.forEach((shortcut: KeyboardShortcut) => {
@@ -414,11 +379,11 @@ describe('TtsKeyboardHandler', () => {
       const registerCall = mockKeyboardHandlerInstance.register.mock.calls[0];
       const shortcuts = registerCall[0];
 
-      // Test each shortcut with throwing orchestration service
-      const spaceShortcut = shortcuts.find((s: KeyboardShortcut) => s.key === ' ')!;
-      mockOrchestrationService.isPlaying.mockImplementation(() => { throw new Error('Service error'); });
+      // Test the stop shortcut with throwing orchestration service
+      const stopShortcut = shortcuts.find((s: KeyboardShortcut) => s.key === 's' && s.shiftKey)!;
+      mockOrchestrationService.stopReading.mockImplementation(() => { throw new Error('Service error'); });
 
-      expect(() => spaceShortcut.action()).toThrow('Service error');
+      expect(() => stopShortcut.action()).toThrow('Service error');
     });
 
     it('should handle undefined orchestration service methods gracefully', () => {

@@ -3,13 +3,14 @@ import { TextChunk, IFRAME_SELECTORS } from '@/types/tts';
 export interface ITextExtractionService {
     extractTextChunks(): Promise<TextChunk[]>;
     getCurrentReaderElement(): HTMLElement | null;
+    hasNextPage(): Promise<boolean>;
+    navigateToNextPage(): Promise<boolean>;
 }
 
 export class EpubTextExtractionService implements ITextExtractionService {
     // Constants for better maintainability
     private static readonly FALLBACK_TEXT_LIMIT = 2000;
     private static readonly CHUNK_TEXT_LIMIT = 1000;
-    private static readonly SENTENCE_LIMIT = 1000;
 
     async extractTextChunks(): Promise<TextChunk[]> {
         try {
@@ -358,5 +359,195 @@ export class EpubTextExtractionService implements ITextExtractionService {
         }
 
         return result.trim() || "No readable text found.";
+    }
+
+    /**
+     * Check if there is a next page available for navigation.
+     */
+    async hasNextPage(): Promise<boolean> {
+        try {
+            const nextButton = this.findNextPageButton();
+            if (nextButton) {
+                // Check if button is enabled (not disabled)
+                return !nextButton.hasAttribute('disabled') &&
+                       !nextButton.classList.contains('disabled') &&
+                       nextButton.style.display !== 'none';
+            }
+
+            // Alternative: Check for keyboard navigation support
+            return this.supportsKeyboardNavigation();
+        } catch (error) {
+            console.debug('Error checking for next page:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Navigate to the next page in the ePub.
+     */
+    async navigateToNextPage(): Promise<boolean> {
+        try {
+            // Method 1: Try clicking next button
+            const nextButton = this.findNextPageButton();
+            if (nextButton && await this.clickNextButton(nextButton)) {
+                return true;
+            }
+
+            // Method 2: Try keyboard navigation (Arrow Right)
+            if (await this.tryKeyboardNavigation()) {
+                return true;
+            }
+
+            // Method 3: Try Thorium-specific navigation
+            if (await this.tryThoriumNavigation()) {
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Find the next page button in the Thorium interface.
+     */
+    private findNextPageButton(): HTMLElement | null {
+        // Common selectors for next page buttons in Thorium
+        const selectors = [
+            'button[title*="next"]',
+            'button[aria-label*="Go forward"]',
+            'button[title*="Next"]',
+            'button[aria-label*="Next"]',
+        ];
+
+        for (const selector of selectors) {
+            const button = document.querySelector(selector) as HTMLElement;
+            if (button) {
+                return button;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Click the next button and wait for navigation.
+     */
+    private async clickNextButton(button: HTMLElement): Promise<boolean> {
+        try {
+            const oldUrl = window.location.href;
+            button.click();
+
+            // Wait for URL change or content change
+            return await this.waitForNavigation(oldUrl);
+        } catch (error) {
+            console.warn('TC-03a: Error clicking next button:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Try keyboard navigation (Right Arrow key).
+     */
+    private async tryKeyboardNavigation(): Promise<boolean> {
+        try {
+            const oldUrl = window.location.href;
+
+            // Try focusing on the iframe first
+            const readerElement = this.getCurrentReaderElement();
+            if (readerElement) {
+                readerElement.focus();
+            }
+
+            // Send Right Arrow key event
+            const keyEvent = new KeyboardEvent('keydown', {
+                key: 'ArrowRight',
+                code: 'ArrowRight',
+                bubbles: true,
+                cancelable: true
+            });
+
+            document.dispatchEvent(keyEvent);
+
+            // Also try on the iframe
+            if (readerElement) {
+                readerElement.dispatchEvent(keyEvent);
+            }
+
+            return await this.waitForNavigation(oldUrl);
+        } catch (error) {
+            console.warn('TC-03a: Error with keyboard navigation:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Try Thorium-specific navigation methods.
+     */
+    private async tryThoriumNavigation(): Promise<boolean> {
+        try {
+            // Look for Thorium's navigation API
+            const win = window as any;
+
+            // Try common Thorium navigation methods
+            if (win.thorium?.reader?.nextPage) {
+                await win.thorium.reader.nextPage();
+                return true;
+            }
+
+            if (win.readium?.navigator?.next) {
+                await win.readium.navigator.next();
+                return true;
+            }
+
+            // Try postMessage to iframe
+            const iframe = document.querySelector('iframe[title="Readium"]') as HTMLIFrameElement;
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ action: 'nextPage' }, '*');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.warn('TC-03a: Error with Thorium navigation:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Check if keyboard navigation is supported.
+     */
+    private supportsKeyboardNavigation(): boolean {
+        // Assume keyboard navigation is available if we have an active reader
+        return this.getCurrentReaderElement() !== null;
+    }
+
+    /**
+     * Wait for page navigation to complete.
+     */
+    private async waitForNavigation(oldUrl: string): Promise<boolean> {
+        const maxWait = 3000; // 3 seconds max wait
+        const checkInterval = 100; // Check every 100ms
+        let waited = 0;
+
+        while (waited < maxWait) {
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+            waited += checkInterval;
+
+            // Check if URL changed
+            if (window.location.href !== oldUrl) {
+                return true;
+            }
+
+            // Check if content changed (new text available)
+            const newChunks = await this.extractTextChunks();
+            if (newChunks.length > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

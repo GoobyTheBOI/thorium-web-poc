@@ -63,8 +63,10 @@ export function useAdapterActions({
     dispatchRef.current(startAdapterSwitch(newAdapterType));
 
     try {
-      cleanupRef.current();
+      // Load voices which will create new services with new keyboard handlers
+      // Note: getServices will automatically cleanup old services when adapter type changes
       await loadVoicesRef.current(newAdapterType);
+
       dispatchRef.current(finishAdapterSwitch());
     } catch (error) {
       console.error('Error changing adapter:', error);

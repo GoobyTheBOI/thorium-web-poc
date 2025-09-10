@@ -52,17 +52,30 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
   }, []);
 
   const stableStateChangeCallback = useCallback((ttsState: TtsState) => {
+    // Update the reducer state to match the TtsStateManager state
     dispatch(setIsPlaying(ttsState.isPlaying));
     dispatch(setIsPaused(ttsState.isPaused));
     dispatch(setIsGenerating(ttsState.isGenerating));
-    dispatch(setError(ttsState.error));
+    if (ttsState.error) {
+      dispatch(setError(ttsState.error));
+    }
 
+    // Also call the external callback if provided
     onStateChangeRef.current?.(ttsState);
   }, [dispatch]);
 
+  // Create a ref to hold the changeAdapter function
+  const changeAdapterRef = useRef<((adapterType: AdapterType) => void) | null>(null);
+
+  const handleAdapterSwitch = useCallback((adapterType: AdapterType) => {
+    if (changeAdapterRef.current) {
+      changeAdapterRef.current(adapterType);
+    }
+  }, []);
+
   const { getServices, cleanup, getKeyboardShortcuts } = useServiceManager({
     onStateChange: stableStateChangeCallback,
-    onAdapterSwitch: () => {},
+    onAdapterSwitch: handleAdapterSwitch,
   });
 
   const { loadVoices, changeVoice } = useVoiceActions({
@@ -79,6 +92,11 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
     onError: handleError
   });
 
+  // Update the ref when changeAdapter changes
+  useEffect(() => {
+    changeAdapterRef.current = changeAdapter;
+  }, [changeAdapter]);
+
   const { generateTts, pause, resume, stop } = useTtsControl({
     state,
     getServices,
@@ -90,7 +108,6 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
     state,
     dispatch,
     getServices,
-    loadVoices,
     cleanup
   });
 

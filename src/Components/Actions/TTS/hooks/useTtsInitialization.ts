@@ -66,12 +66,7 @@ export function useTtsInitialization({
     initializeOnce();
   }, [dispatch, getServices]);
 
-  useEffect(() => {
-    if (state.isRecreatingServices) {
-      cleanup();
-    }
-  }, [state.isRecreatingServices, cleanup]);
-
+  // Cleanup when component unmounts
   useEffect(() => {
     return () => {
       cleanup();

@@ -53,12 +53,16 @@ export function useServiceManager({ onStateChange, onAdapterSwitch }: UseService
 
   const getKeyboardShortcuts = useCallback(() => {
     try {
-      const { keyboardHandler } = getServices();
+      // Only get services if they exist, don't force creation during adapter switch
+      if (!servicesRef.current) {
+        return [];
+      }
+      const { keyboardHandler } = servicesRef.current;
       return keyboardHandler.getShortcuts();
     } catch {
       return [];
     }
-  }, [getServices]);
+  }, []);
 
   return {
     getServices,

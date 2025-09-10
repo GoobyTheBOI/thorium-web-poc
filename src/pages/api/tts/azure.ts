@@ -133,8 +133,18 @@ function createSSML(text: string, voiceName: string): string {
         return text;
     }
 
-    // Always wrap in proper SSML structure (fixes the 500 error with plain text)
-    return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-        <voice name='${voiceName}'>${text}</voice>
-    </speak>`;
+    // Check if text already contains SSML markup from TextProcessor
+    const hasSSMLMarkup = text.includes('<emphasis>') || text.includes('<prosody>') || text.includes('<break');
+
+    if (hasSSMLMarkup) {
+        // Text has SSML markup from TextProcessor, wrap it properly
+        return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
+            <voice name='${voiceName}'>${text}</voice>
+        </speak>`;
+    } else {
+        // Plain text, wrap in basic SSML structure
+        return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
+            <voice name='${voiceName}'>${text}</voice>
+        </speak>`;
+    }
 }

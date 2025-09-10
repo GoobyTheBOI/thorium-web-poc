@@ -1,5 +1,6 @@
 import { ITTSError } from '@/preferences/types';
 import { TextChunk } from '@/types/tts';
+import { createError } from './errorUtils';
 
 export interface AudioPlaybackResult<T> {
     success: boolean;
@@ -10,7 +11,6 @@ export interface AudioPlaybackResult<T> {
 export interface AudioPlaybackAdapter {
     setupAudioPlayback(audioBlob: Blob): Promise<HTMLAudioElement>;
     emitEvent(event: string, info: unknown): void;
-    createError(code: string, message: string, details?: unknown): ITTSError;
     cleanup(): void;
 }
 
@@ -28,9 +28,9 @@ async function playPreGeneratedAudio<T>(
     successResult: T
 ): Promise<T> {
     adapter.cleanup();
-    
+
     const audio = await adapter.setupAudioPlayback(audioBlob);
-    
+
     return new Promise<T>((resolve, reject) => {
         const onEnd = () => {
             audio.removeEventListener('ended', onEnd);
@@ -38,15 +38,15 @@ async function playPreGeneratedAudio<T>(
             adapter.emitEvent('end', { success: true });
             resolve(successResult);
         };
-        
+
         const onError = (error: Event) => {
             audio.removeEventListener('ended', onEnd);
             audio.removeEventListener('error', onError);
-            const ttsError = adapter.createError('PLAYBACK_FAILED', 'Audio playback failed', error);
+            const ttsError = createError('PLAYBACK_FAILED', 'Audio playback failed', error);
             adapter.emitEvent('end', { success: false, error: ttsError });
             reject(ttsError);
         };
-        
+
         audio.addEventListener('ended', onEnd);
         audio.addEventListener('error', onError);
     });
@@ -65,7 +65,7 @@ export async function playUniversal<T>(
     if (input instanceof Blob) {
         return await playPreGeneratedAudio(adapter, input, successResult);
     }
-    
+
     // Handle TextChunk input (generate and play)
     return await adapter.playTextChunk(input);
 }
