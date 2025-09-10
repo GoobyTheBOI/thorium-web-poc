@@ -6,6 +6,11 @@ export interface ITextExtractionService {
 }
 
 export class EpubTextExtractionService implements ITextExtractionService {
+    // Constants for better maintainability
+    private static readonly FALLBACK_TEXT_LIMIT = 2000;
+    private static readonly CHUNK_TEXT_LIMIT = 1000;
+    private static readonly SENTENCE_LIMIT = 1000;
+
     async extractTextChunks(): Promise<TextChunk[]> {
         try {
             const readerElement = this.getCurrentReaderElement();
@@ -13,27 +18,17 @@ export class EpubTextExtractionService implements ITextExtractionService {
                 throw new Error('Cannot access reader content');
             }
 
-            const textNodes = this.getAllTextNodes(readerElement);
-            const chunks: TextChunk[] = [];
+            const chunks = await this.extractVisibleTextChunks(readerElement);
 
-            textNodes.forEach((node) => {
-                const text = node.textContent?.trim();
-                if (text && text.length > 0) {
-                    chunks.push({
-                        text: text,
-                        element: node.parentElement?.tagName || undefined,
-                    });
-                }
-            });
+            // If no visible text found, use fallback strategy
+            if (chunks.length === 0) {
+                return await this.extractFallbackTextChunks(readerElement);
+            }
 
             return chunks;
         } catch (error) {
             console.error('Error extracting text with elements:', error);
-            const fallbackText = await this.extractFallbackText();
-            return [{
-                text: fallbackText,
-                element: 'fallback'
-            }];
+            return await this.createFallbackChunk();
         }
     }
 
@@ -62,7 +57,133 @@ export class EpubTextExtractionService implements ITextExtractionService {
         return null;
     }
 
+    /**
+     * Extract text chunks from elements that are currently visible in the viewport.
+     */
+    private async extractVisibleTextChunks(readerElement: HTMLElement): Promise<TextChunk[]> {
+        const visibleTextNodes = this.getVisibleTextNodes(readerElement);
+        return this.convertNodesToChunks(visibleTextNodes);
+    }
+
+    /**
+     * Extract text chunks using fallback strategies when visible text is not found.
+     */
+    private async extractFallbackTextChunks(readerElement: HTMLElement): Promise<TextChunk[]> {
+        console.debug('No visible text found, using fallback extraction');
+
+        const allTextNodes = this.getAllTextNodes(readerElement);
+        const totalTextLength = this.calculateTotalTextLength(allTextNodes);
+
+        if (this.shouldIncludeAllText(totalTextLength)) {
+            return this.convertNodesToChunks(allTextNodes);
+        }
+
+        return this.extractLimitedTextChunks(allTextNodes);
+    }
+
+    /**
+     * Create a fallback chunk when all other extraction methods fail.
+     */
+    private async createFallbackChunk(): Promise<TextChunk[]> {
+        const fallbackText = await this.extractFallbackText();
+        return [{
+            text: fallbackText,
+            element: 'fallback'
+        }];
+    }
+
+    /**
+     * Convert text nodes to TextChunk objects.
+     */
+    private convertNodesToChunks(nodes: Node[]): TextChunk[] {
+        const chunks: TextChunk[] = [];
+
+        nodes.forEach((node) => {
+            const text = node.textContent?.trim();
+            if (this.isValidText(text)) {
+                chunks.push({
+                    text: text!,
+                    element: node.parentElement?.tagName || undefined,
+                });
+            }
+        });
+
+        return chunks;
+    }
+
+    /**
+     * Calculate the total text length from a collection of nodes.
+     */
+    private calculateTotalTextLength(nodes: Node[]): number {
+        return nodes.reduce((total, node) => total + (node.textContent?.length || 0), 0);
+    }
+
+    /**
+     * Determine if all text should be included based on total length.
+     */
+    private shouldIncludeAllText(totalLength: number): boolean {
+        return totalLength < EpubTextExtractionService.FALLBACK_TEXT_LIMIT;
+    }
+
+    /**
+     * Extract a limited amount of text chunks to avoid overwhelming TTS.
+     */
+    private extractLimitedTextChunks(nodes: Node[]): TextChunk[] {
+        const chunks: TextChunk[] = [];
+        let accumulatedLength = 0;
+
+        for (const node of nodes) {
+            const text = node.textContent?.trim();
+            if (this.isValidText(text)) {
+                chunks.push({
+                    text: text!,
+                    element: node.parentElement?.tagName || undefined,
+                });
+                accumulatedLength += text!.length;
+
+                if (accumulatedLength > EpubTextExtractionService.CHUNK_TEXT_LIMIT) {
+                    break;
+                }
+            }
+        }
+
+        return chunks;
+    }
+
+    /**
+     * Check if text is valid and non-empty.
+     */
+    private isValidText(text: string | undefined): text is string {
+        return Boolean(text && text.length > 0);
+    }
+
+    /**
+     * Get all text nodes from an element, regardless of visibility.
+     */
     private getAllTextNodes(element: Element): Node[] {
+        return this.createTextNodeWalker(element, () => NodeFilter.FILTER_ACCEPT);
+    }
+
+    /**
+     * Get text nodes that are currently visible in the viewport.
+     * This ensures we only read text from the current page, not the entire chapter.
+     */
+    private getVisibleTextNodes(element: Element): Node[] {
+        return this.createTextNodeWalker(element, (node) => {
+            const parentElement = node.parentElement;
+            return parentElement && this.isElementInViewport(parentElement)
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_REJECT;
+        });
+    }
+
+    /**
+     * Create a TreeWalker for text nodes with custom filtering.
+     */
+    private createTextNodeWalker(
+        element: Element,
+        acceptNodeCallback: (node: Node) => number
+    ): Node[] {
         const textNodes: Node[] = [];
         const walker = document.createTreeWalker(
             element,
@@ -70,7 +191,10 @@ export class EpubTextExtractionService implements ITextExtractionService {
             {
                 acceptNode: (node) => {
                     const text = node.textContent?.trim();
-                    return text && text.length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                    if (!this.isValidText(text)) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return acceptNodeCallback(node);
                 }
             }
         );
@@ -82,25 +206,96 @@ export class EpubTextExtractionService implements ITextExtractionService {
         return textNodes;
     }
 
+    /**
+     * Check if an element is currently visible in the viewport.
+     * This helps determine which text should be read from the current page.
+     */
+    private isElementInViewport(element: Element): boolean {
+        try {
+            const rect = element.getBoundingClientRect();
+
+            if (!this.isRectVisible(rect)) {
+                return false;
+            }
+
+            const iframe = this.getOwnerIframe(element);
+            return iframe ? this.isVisibleInIframe(rect, iframe) : this.isVisibleInWindow(rect);
+        } catch (error) {
+            console.debug('Error checking viewport visibility:', error);
+            // If we can't determine visibility, include the element to be safe
+            return true;
+        }
+    }
+
+    /**
+     * Check if a rectangle has visible dimensions.
+     */
+    private isRectVisible(rect: DOMRect): boolean {
+        return rect.width > 0 && rect.height > 0;
+    }
+
+    /**
+     * Get the iframe that owns the element, if any.
+     */
+    private getOwnerIframe(element: Element): HTMLIFrameElement | null {
+        return element.ownerDocument?.defaultView?.frameElement as HTMLIFrameElement || null;
+    }
+
+    /**
+     * Check if element is visible within an iframe's viewport.
+     */
+    private isVisibleInIframe(rect: DOMRect, iframe: HTMLIFrameElement): boolean {
+        const iframeWindow = iframe.contentWindow;
+        if (!iframeWindow) return false;
+
+        const viewportHeight = iframeWindow.innerHeight || iframe.clientHeight;
+        const viewportWidth = iframeWindow.innerWidth || iframe.clientWidth;
+
+        return this.isRectIntersectingViewport(rect, viewportWidth, viewportHeight);
+    }
+
+    /**
+     * Check if element is visible within the main window's viewport.
+     */
+    private isVisibleInWindow(rect: DOMRect): boolean {
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+        return this.isRectIntersectingViewport(rect, viewportWidth, viewportHeight);
+    }
+
+    /**
+     * Check if a rectangle intersects with the viewport (more lenient than fully contained).
+     */
+    private isRectIntersectingViewport(rect: DOMRect, viewportWidth: number, viewportHeight: number): boolean {
+        return (
+            rect.bottom > 0 &&
+            rect.top < viewportHeight &&
+            rect.right > 0 &&
+            rect.left < viewportWidth
+        );
+    }
+
     private async extractFallbackText(): Promise<string> {
         try {
             const readerIframe = document.querySelector('iframe[title="Readium"]') as HTMLIFrameElement;
 
             if (readerIframe && readerIframe.contentDocument) {
+                // Try to get text from currently visible elements first
+                const visibleText = this.extractVisibleText(readerIframe.contentDocument.body);
+
+                if (visibleText && visibleText.trim().length > 0) {
+                    return this.limitTextLength(visibleText);
+                }
+
+                // Fallback to full content if no visible text found
                 const textContent = readerIframe.contentDocument.body.innerText;
 
                 if (!textContent || textContent.trim().length === 0) {
                     return "No text content found in current view.";
                 }
 
-                const sentences = textContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
-                let result = '';
-                for (const sentence of sentences) {
-                    if ((result + sentence).length > 1000) break;
-                    result += sentence.trim() + '. ';
-                }
-
-                return result.trim() || "No readable text found.";
+                return this.limitTextLength(textContent);
             }
 
             const selection = window.getSelection();
@@ -113,5 +308,55 @@ export class EpubTextExtractionService implements ITextExtractionService {
             console.error('Error extracting fallback text:', error);
             return "Error extracting text from current view.";
         }
+    }
+
+    /**
+     * Extract text from elements that are currently visible in the viewport.
+     */
+    private extractVisibleText(rootElement: Element): string {
+        const visibleElements: Element[] = [];
+        const walker = document.createTreeWalker(
+            rootElement,
+            NodeFilter.SHOW_ELEMENT,
+            {
+                acceptNode: (node) => {
+                    const element = node as Element;
+                    if (this.isElementInViewport(element) && element.textContent?.trim()) {
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                    return NodeFilter.FILTER_REJECT;
+                }
+            }
+        );
+
+        let node;
+        while (node = walker.nextNode()) {
+            visibleElements.push(node as Element);
+        }
+
+        // Extract text from visible elements, prioritizing block-level elements
+        const textParts: string[] = [];
+        visibleElements.forEach(element => {
+            const text = element.textContent?.trim();
+            if (text && !textParts.some(existing => existing.includes(text))) {
+                textParts.push(text);
+            }
+        });
+
+        return textParts.join(' ');
+    }
+
+    /**
+     * Limit text to a reasonable length for TTS processing.
+     */
+    private limitTextLength(text: string): string {
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        let result = '';
+        for (const sentence of sentences) {
+            if ((result + sentence).length > 1000) break;
+            result += sentence.trim() + '. ';
+        }
+
+        return result.trim() || "No readable text found.";
     }
 }

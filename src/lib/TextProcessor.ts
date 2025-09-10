@@ -30,9 +30,15 @@ export class DefaultTextProcessor implements ITextProcessor {
             case 'italic':
                 return `<emphasis level="moderate">${cleanText}</emphasis>`;
             case 'bold':
-                return `<emphasis level="strong">${cleanText}`;
+                return `<emphasis level="strong">${cleanText}</emphasis>`;
+
+            case 'code':
+                // Handle code elements with slight emphasis
+                return `<emphasis level="moderate">${cleanText}</emphasis>`;
 
             default:
+                // For unknown elements, just return the clean text
+                // This ensures the reader continues instead of stopping
                 return cleanText;
         }
     }
@@ -78,6 +84,8 @@ export class DefaultTextProcessor implements ITextProcessor {
             return 'italic';
         } else if (tagName === 'b' || tagName === 'strong') {
             return 'bold';
+        } else if (tagName === 'code' || tagName === 'pre' || tagName === 'kbd' || tagName === 'samp') {
+            return 'code';
         }
 
         return 'normal';

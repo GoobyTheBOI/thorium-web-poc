@@ -28,7 +28,7 @@ export const TTS_CONSTANTS = {
     MAX_TEXT_LENGTH: 5000,
     DEFAULT_MODEL: 'eleven_multilingual_v2',
     DEFAULT_VOICE_ID: 'JBFqnCBsd6RMkjVDRZzb',
-    CHUNK_SIZE_FOR_TESTING: 2,
+    CHUNK_SIZE_FOR_TESTING: 3,
     MAX_CHUNKS: 5,
     // Reading modes
     ENABLE_WHOLE_PAGE_READING: false,
