@@ -6,7 +6,7 @@ import {
   MockTextProcessor,
   MockVoiceService,
   ElevenLabsAdapterWithPrivates
-} from '../types/adapterTestTypes';
+} from '../../types/adapterTestTypes';
 
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
   ElevenLabsApi: jest.fn().mockImplementation(() => ({

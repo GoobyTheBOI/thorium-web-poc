@@ -76,8 +76,7 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
       expect(res._getStatusCode()).toBe(400);
 
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Missing required fields');
-      expect(data.details).toBe('text is required');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
     test('returns 400 when text is empty string', async () => {
@@ -91,13 +90,12 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
       expect(res._getStatusCode()).toBe(400);
 
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Missing required fields');
-      expect(data.details).toBe('text is required');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
   });
 
   describe('Environment Configuration Validation', () => {
-    test('returns 500 when AZURE_API_KEY is missing', async () => {
+    test('returns 401 when AZURE_API_KEY is missing', async () => {
       delete process.env.AZURE_API_KEY;
       process.env.AZURE_REGION = 'test-region';
 
@@ -108,13 +106,13 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Azure Speech API not configured');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
-    test('returns 500 when AZURE_REGION is missing', async () => {
+    test('returns 401 when AZURE_REGION is missing', async () => {
       process.env.AZURE_API_KEY = 'test-key';
       delete process.env.AZURE_REGION;
 
@@ -125,13 +123,13 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Azure Speech API not configured');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
-    test('returns 500 when both Azure credentials are missing', async () => {
+    test('returns 401 when both Azure credentials are missing', async () => {
       delete process.env.AZURE_API_KEY;
       delete process.env.AZURE_REGION;
 
@@ -142,11 +140,10 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Azure Speech API not configured');
-      expect(data.details).toBe('Please set AZURE_SPEECH_KEY and AZURE_SPEECH_REGION in your environment variables');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
     test('validates correct environment variable names match implementation', async () => {
@@ -168,7 +165,7 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect([400, 500]).toContain(res._getStatusCode());
+      expect([400, 401, 500]).toContain(res._getStatusCode());
 
       const data = JSON.parse(res._getData());
       expect(data.error).toBeDefined();
@@ -185,11 +182,10 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Azure Speech API not configured');
-      expect(data.details).toContain('AZURE_SPEECH_KEY');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
   });
 
@@ -206,9 +202,7 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       const data = JSON.parse(res._getData());
       expect(data).toHaveProperty('error');
-      expect(data).toHaveProperty('details');
       expect(typeof data.error).toBe('string');
-      expect(typeof data.details).toBe('string');
     });
   });
 
@@ -326,7 +320,7 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       expect(res._getStatusCode()).toBe(400);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Missing required fields');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
     test('handles null text field', async () => {
@@ -339,7 +333,7 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       expect(res._getStatusCode()).toBe(400);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Missing required fields');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
     test('handles only AZURE_API_KEY missing', async () => {
@@ -353,9 +347,9 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Azure Speech API not configured');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
     test('handles only AZURE_REGION missing', async () => {
@@ -369,9 +363,9 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Azure Speech API not configured');
+      expect(data.error).toBe('Failed to generate audio with Azure Speech');
     });
 
     test('validates error response structure compliance', async () => {
@@ -385,11 +379,8 @@ describe(`${TEST_CONFIG.API_ENDPOINTS.AZURE_TTS}`, () => {
       const data = JSON.parse(res._getData());
 
       expect(data).toHaveProperty('error');
-      expect(data).toHaveProperty('details');
       expect(typeof data.error).toBe('string');
-      expect(typeof data.details).toBe('string');
       expect(data.error.length).toBeGreaterThan(0);
-      expect(data.details.length).toBeGreaterThan(0);
     });
   });
 

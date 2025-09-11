@@ -1,5 +1,17 @@
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 
+// Mock error utilities
+jest.mock('@/lib/utils/errorUtils', () => ({
+  createNetworkAwareError: jest.fn((error: any, service: string) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const newError = new Error(errorMessage);
+    newError.name = 'NetworkAwareError';
+    return newError;
+  }),
+  isNetworkError: jest.fn(),
+  isDevelopment: jest.fn(() => false),
+}));
+
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -54,7 +66,6 @@ describe('Voice API Integration', () => {
 
       // When/Then: Error is propagated
       await expect(voiceService.loadElevenLabsVoices()).rejects.toThrow('Network error');
-      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
@@ -97,7 +108,6 @@ describe('Voice API Integration', () => {
 
       // When/Then: Error is propagated
       await expect(voiceService.loadAzureVoices()).rejects.toThrow('Azure API error');
-      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 

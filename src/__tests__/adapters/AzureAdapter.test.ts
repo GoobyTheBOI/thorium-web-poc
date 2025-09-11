@@ -5,7 +5,7 @@ import {
   MockAudioElement,
   MockTextProcessor,
   AzureAdapterWithPrivates
-} from '../types/adapterTestTypes';
+} from '../../types/adapterTestTypes';
 
 jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
   SpeechConfig: {
@@ -104,11 +104,16 @@ describe('AzureAdapter', () => {
 
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      // Mock Audio element
+      // Mock Audio element that fires ended event immediately
       const mockAudio = {
         play: jest.fn().mockResolvedValue(undefined),
         pause: jest.fn(),
-        addEventListener: jest.fn(),
+        addEventListener: jest.fn().mockImplementation((event, handler) => {
+          if (event === 'ended') {
+            // Fire the ended event immediately to complete the promise
+            setTimeout(() => handler(), 0);
+          }
+        }),
         removeEventListener: jest.fn(),
         src: '',
         currentTime: 0,
@@ -118,7 +123,7 @@ describe('AzureAdapter', () => {
 
       const result = await adapter.play(textChunk);
 
-      expect(global.fetch).toHaveBeenCalledWith(TEST_CONFIG.API_ENDPOINTS.AZURE_TTS, {
+      expect(global.fetch).toHaveBeenCalledWith('/api/tts/azure', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,7 +153,12 @@ describe('AzureAdapter', () => {
       const mockAudio = {
         play: jest.fn().mockResolvedValue(undefined),
         pause: jest.fn(),
-        addEventListener: jest.fn(),
+        addEventListener: jest.fn().mockImplementation((event, handler) => {
+          if (event === 'ended') {
+            // Fire the ended event immediately to complete the promise
+            setTimeout(() => handler(), 0);
+          }
+        }),
         removeEventListener: jest.fn()
       };
       (global as unknown as { Audio: jest.Mock }).Audio = jest.fn(() => mockAudio);
@@ -218,7 +228,8 @@ describe('AzureAdapter', () => {
         pause: jest.fn(),
         play: jest.fn(),
         currentTime: 30,
-        duration: 60
+        duration: 60,
+        load: jest.fn()  // Add missing load method
       };
 
       (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;
@@ -320,7 +331,8 @@ describe('AzureAdapter', () => {
         pause: jest.fn(),
         play: jest.fn().mockResolvedValue(undefined),
         currentTime: 0,
-        duration: 60
+        duration: 60,
+        load: jest.fn()  // Add missing load method
       };
 
       (adapter as unknown as AzureAdapterWithPrivates).currentAudio = mockAudio as unknown as HTMLAudioElement;

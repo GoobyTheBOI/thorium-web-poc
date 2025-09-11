@@ -1,7 +1,7 @@
 import { createAdapter, AdapterType, AVAILABLE_ADAPTERS } from '@/lib/factories/AdapterFactory';
 import { ElevenLabsAdapter } from '@/lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '@/lib/adapters/AzureAdapter';
-import { DefaultTextProcessor } from '@/lib/TextProcessor';
+import { DefaultTextProcessor, ElevenLabsTextProcessor } from '@/lib/TextProcessor';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 
 jest.mock('@/lib/adapters/ElevenLabsAdapter');
@@ -64,7 +64,7 @@ describe('AdapterFactory - SOLID Architecture', () => {
     test('createAdapter creates ElevenLabsAdapter for elevenlabs type', () => {
       const adapter = createAdapter('elevenlabs', mockVoiceService);
 
-      expect(ElevenLabsAdapter).toHaveBeenCalledWith(expect.any(DefaultTextProcessor), mockVoiceService);
+      expect(ElevenLabsAdapter).toHaveBeenCalledWith(expect.any(ElevenLabsTextProcessor), mockVoiceService);
       expect(adapter).toBeInstanceOf(ElevenLabsAdapter);
     });
 
@@ -152,7 +152,7 @@ describe('AdapterFactory - SOLID Architecture', () => {
       const constructorCall = (ElevenLabsAdapter as jest.Mock).mock.calls[0];
 
       expect(constructorCall).toHaveLength(2);
-      expect(constructorCall[0]).toBeInstanceOf(DefaultTextProcessor);
+      expect(constructorCall[0]).toBeInstanceOf(ElevenLabsTextProcessor);
       expect(constructorCall[1]).toBe(mockVoiceService);
     });
 
@@ -164,7 +164,7 @@ describe('AdapterFactory - SOLID Architecture', () => {
       const azureCall = (AzureAdapter as jest.Mock).mock.calls[0];
 
       // Text processors should be different instances (new for each call)
-      expect(elevenlabsCall[0]).toBeInstanceOf(DefaultTextProcessor);
+      expect(elevenlabsCall[0]).toBeInstanceOf(ElevenLabsTextProcessor);
       expect(azureCall[0]).toBeInstanceOf(DefaultTextProcessor);
     });
 
@@ -273,15 +273,16 @@ describe('AdapterFactory - SOLID Architecture', () => {
       createAdapter('azure', mockVoiceService);
       createAdapter('elevenlabs', mockVoiceService);
 
-      const calls = [
-        ...(ElevenLabsAdapter as jest.Mock).mock.calls,
-        ...(AzureAdapter as jest.Mock).mock.calls
-      ];
+      // Check ElevenLabs calls
+      const elevenlabsCalls = (ElevenLabsAdapter as jest.Mock).mock.calls;
+      expect(elevenlabsCalls.length).toBe(2);
+      expect(elevenlabsCalls[0][0]).toBeInstanceOf(ElevenLabsTextProcessor); // First elevenlabs call
+      expect(elevenlabsCalls[1][0]).toBeInstanceOf(ElevenLabsTextProcessor); // Second elevenlabs call
 
-      const textProcessors = calls.map(call => call[0]);
-      // Each call should get a new TextProcessor instance
-      expect(textProcessors.length).toBe(3);
-      textProcessors.forEach(tp => expect(tp).toBeInstanceOf(DefaultTextProcessor));
+      // Check Azure calls
+      const azureCalls = (AzureAdapter as jest.Mock).mock.calls;
+      expect(azureCalls.length).toBe(1);
+      expect(azureCalls[0][0]).toBeInstanceOf(DefaultTextProcessor); // Azure call
     });
   });
 
@@ -355,7 +356,7 @@ describe('AdapterFactory - SOLID Architecture', () => {
     test('factory follows separation of concerns for configuration', () => {
       // Function-based approach doesn't have configuration properties
       createAdapter('elevenlabs', mockVoiceService);
-      expect(ElevenLabsAdapter).toHaveBeenCalledWith(expect.any(DefaultTextProcessor), mockVoiceService);
+      expect(ElevenLabsAdapter).toHaveBeenCalledWith(expect.any(ElevenLabsTextProcessor), mockVoiceService);
     });
   });
 

@@ -93,6 +93,7 @@ const initialState: TtsReducerState = {
   isPaused: false,
   isGenerating: false,
   error: null,
+  isEnabled: true,
 };
 
 describe('ttsReducer', () => {

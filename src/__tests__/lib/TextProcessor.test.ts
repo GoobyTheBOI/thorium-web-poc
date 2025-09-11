@@ -1,4 +1,4 @@
-import { DefaultTextProcessor } from '../../lib/TextProcessor';
+import { DefaultTextProcessor, ElevenLabsTextProcessor } from '../../lib/TextProcessor';
 import { TTS_CONSTANTS } from '../../types/tts';
 import { TEST_CONFIG } from '../../lib/constants/testConstants';
 
@@ -462,6 +462,170 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
 
       const testText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1);
       expect(processor.validateText(testText)).toBe(false);
+    });
+  });
+});
+
+describe('ElevenLabsTextProcessor - SOLID Architecture', () => {
+  let processor: ElevenLabsTextProcessor;
+
+  beforeEach(() => {
+    processor = new ElevenLabsTextProcessor();
+  });
+
+  describe('Interface Compliance', () => {
+    test('implements ITextProcessor interface', () => {
+      expect(typeof processor.formatText).toBe('function');
+      expect(typeof processor.validateText).toBe('function');
+    });
+
+    test('formatText returns string for all inputs', () => {
+      const result = processor.formatText('test', 'normal');
+      expect(typeof result).toBe('string');
+    });
+
+    test('validateText returns boolean for all inputs', () => {
+      const result = processor.validateText('test');
+      expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('ElevenLabs-specific Text Formatting', () => {
+    test('formatText handles basic text without SSML', () => {
+      const result = processor.formatText('Hello world', 'normal');
+      expect(result).toBe('Hello world');
+      expect(result).not.toContain('<');
+      expect(result).not.toContain('>');
+    });
+
+    test('formatText adds emphasis for heading elements', () => {
+      const text = 'Chapter Title';
+      const result = processor.formatText(text, 'h1');
+
+      expect(result).toContain('...');
+      expect(result).toContain('CHAPTER TITLE');
+      expect(result.toUpperCase()).toContain('CHAPTER TITLE');
+    });
+
+    test('formatText adds punctuation for paragraph elements', () => {
+      const text = 'This is a paragraph';
+      const result = processor.formatText(text, 'p');
+
+      expect(result).toBe('This is a paragraph.');
+      expect(result.endsWith('.')).toBe(true);
+    });
+
+    test('formatText adds emphasis marks for italic elements', () => {
+      const text = 'emphasized text';
+      const resultI = processor.formatText(text, 'i');
+      const resultEm = processor.formatText(text, 'em');
+
+      expect(resultI).toContain('—');
+      expect(resultI).toContain('emphasized text');
+      expect(resultEm).toContain('—');
+      expect(resultEm).toContain('emphasized text');
+    });
+
+    test('formatText adds uppercase for bold elements', () => {
+      const text = 'important text';
+      const resultB = processor.formatText(text, 'b');
+      const resultStrong = processor.formatText(text, 'strong');
+
+      expect(resultB).toContain('IMPORTANT TEXT');
+      expect(resultB).toContain('!');
+      expect(resultStrong).toContain('IMPORTANT TEXT');
+      expect(resultStrong).toContain('!');
+    });
+
+    test('formatText handles code elements with spacing', () => {
+      const text = 'function';
+      const resultCode = processor.formatText(text, 'code');
+      const resultPre = processor.formatText(text, 'pre');
+
+      expect(resultCode).toContain('Code:');
+      expect(resultCode).toContain('f u n c t i o n');
+      expect(resultPre).toContain('Code:');
+      expect(resultPre).toContain('f u n c t i o n');
+    });
+
+    test('formatText handles all heading levels', () => {
+      const text = 'Heading';
+      const headingTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+      headingTags.forEach(tag => {
+        const result = processor.formatText(text, tag);
+        expect(result).toContain('...');
+        expect(result).toContain('HEADING');
+      });
+    });
+  });
+
+  describe('Input Validation and Edge Cases', () => {
+    test('formatText handles null and undefined input', () => {
+      expect(processor.formatText(null as any, 'normal')).toBe('');
+      expect(processor.formatText(undefined as any, 'normal')).toBe('');
+      expect(processor.formatText('', 'normal')).toBe('');
+    });
+
+    test('formatText handles non-string input', () => {
+      expect(processor.formatText(123 as any, 'normal')).toBe('');
+      expect(processor.formatText({} as any, 'normal')).toBe('');
+      expect(processor.formatText([] as any, 'normal')).toBe('');
+    });
+
+    test('formatText normalizes whitespace', () => {
+      const result = processor.formatText('  Hello   world  \n\t  ', 'normal');
+      expect(result).toBe('Hello world'); // Processor actually trims whitespace
+    });
+
+    test('formatText handles unknown element types', () => {
+      const text = 'test text';
+      const result = processor.formatText(text, 'unknowntag');
+      expect(result).toBe('test text');
+    });
+
+    test('formatText handles null/undefined element types', () => {
+      const text = 'test text';
+      expect(processor.formatText(text, null as any)).toBe('test text');
+      expect(processor.formatText(text, undefined as any)).toBe('test text');
+    });
+  });
+
+  describe('Text Validation', () => {
+    test('validateText returns true for valid text', () => {
+      expect(processor.validateText('Valid text')).toBe(true);
+      expect(processor.validateText('Short')).toBe(true);
+      expect(processor.validateText('A')).toBe(true);
+    });
+
+    test('validateText returns false for invalid text', () => {
+      expect(processor.validateText('')).toBe(false);
+      expect(processor.validateText('   ')).toBe(false);
+      expect(processor.validateText(null as any)).toBe(false);
+      expect(processor.validateText(undefined as any)).toBe(false);
+    });
+
+    test('validateText returns false for non-string input', () => {
+      expect(processor.validateText(123 as any)).toBe(false);
+      expect(processor.validateText({} as any)).toBe(false);
+      expect(processor.validateText([] as any)).toBe(false);
+    });
+
+    test('validateText checks maximum text length', () => {
+      expect(TTS_CONSTANTS.MAX_TEXT_LENGTH).toBeDefined();
+      expect(typeof TTS_CONSTANTS.MAX_TEXT_LENGTH).toBe('number');
+
+      const testText = 'A'.repeat(TTS_CONSTANTS.MAX_TEXT_LENGTH + 1);
+      expect(processor.validateText(testText)).toBe(false);
+    });
+  });
+
+  describe('Element Type Detection', () => {
+    test('detectElementType correctly identifies different element types', () => {
+      // Test through formatText since detectElementType is private
+      expect(processor.formatText('test', 'a')).toBe('test'); // normal type
+      expect(processor.formatText('test', 'span')).toBe('test'); // normal type
+      expect(processor.formatText('test', 'div')).toBe('test'); // normal type
     });
   });
 });

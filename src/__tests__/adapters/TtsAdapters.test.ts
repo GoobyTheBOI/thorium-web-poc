@@ -397,7 +397,7 @@ describe('TTS Adapters - SOLID Architecture', () => {
       // Should only have public methods defined in interfaces
       const expectedMethods = [
         'play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off',
-        'getIsPlaying', 'getIsPaused', 'getCurrentAudio'
+        'getIsPlaying', 'getIsPaused', 'getCurrentAudio', 'playTextChunk'
       ];
 
       // Private/internal methods that shouldn't be part of the public interface

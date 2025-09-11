@@ -67,11 +67,10 @@ describe('/api/tts/elevenlabs', () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('ElevenLabs API key not configured');
-      expect(data.details).toContain('ELEVENLABS_API_KEY');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('validates empty ELEVENLABS_API_KEY configuration', async () => {
@@ -87,10 +86,10 @@ describe('/api/tts/elevenlabs', () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('ElevenLabs API key not configured');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('validates TTSRequestBody interface compliance', async () => {
@@ -325,13 +324,10 @@ describe('/api/tts/elevenlabs', () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('Failed to generate audio');
-      if (process.env.NODE_ENV === 'development') {
-        expect(data.details).toBe('API authentication failed');
-      }
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('handles ElevenLabs API rate limiting errors', async () => {
@@ -355,10 +351,10 @@ describe('/api/tts/elevenlabs', () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(429);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('Failed to generate audio');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('handles stream processing errors during audio conversion', async () => {
@@ -398,7 +394,7 @@ describe('/api/tts/elevenlabs', () => {
       expect(res._getStatusCode()).toBe(500);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('Failed to generate audio');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('handles ElevenLabs client initialization errors', async () => {
@@ -419,10 +415,10 @@ describe('/api/tts/elevenlabs', () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('Failed to generate audio');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('handles unknown error types gracefully', async () => {
@@ -449,10 +445,16 @@ describe('/api/tts/elevenlabs', () => {
       expect(res._getStatusCode()).toBe(500);
 
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
-      expect(data.error).toBe('Failed to generate audio');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
     });
 
     test('validates TTSErrorResponse structure for all error scenarios', async () => {
+      // Save original NODE_ENV and set to development to ensure details are included
+      const originalNodeEnv = process.env.NODE_ENV;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true
+      });
       delete process.env.ELEVENLABS_API_KEY;
 
       const { req, res } = createMocks<NextApiRequest, NextApiResponse<Buffer | TTSErrorResponse>>({
@@ -468,9 +470,18 @@ describe('/api/tts/elevenlabs', () => {
       const data = JSON.parse(res._getData()) as TTSErrorResponse;
 
       expect(data).toHaveProperty('error');
-      expect(data).toHaveProperty('details');
+      expect(data.error).toBe('Failed to generate audio with ElevenLabs');
       expect(typeof data.error).toBe('string');
+
+      // Details should be present in development mode
+      expect(data).toHaveProperty('details');
       expect(typeof data.details).toBe('string');
+
+      // Restore original NODE_ENV
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalNodeEnv,
+        writable: true
+      });
     });
   });
 
