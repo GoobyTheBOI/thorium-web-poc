@@ -7,10 +7,12 @@ export class TtsKeyboardHandler {
     private orchestrationService: ITtsOrchestrationService;
     private lastStartTime: number = 0;
     private readonly START_THROTTLE_MS = INTERACTION_CONSTANTS.THROTTLE.TTS_START_MS;
+    private onToggle?: () => void;
 
-    constructor(orchestrationService: ITtsOrchestrationService) {
+    constructor(orchestrationService: ITtsOrchestrationService, onToggle?: () => void) {
         this.keyboardHandler = new KeyboardHandler();
         this.orchestrationService = orchestrationService;
+        this.onToggle = onToggle;
         this.setupTtsShortcuts();
     }
 
@@ -79,6 +81,16 @@ export class TtsKeyboardHandler {
                     }
                 },
                 description: 'Switch TTS Adapter'
+            },
+            {
+                key: 'q',
+                shiftKey: true,
+                action: () => {
+                    if (this.onToggle) {
+                        this.onToggle();
+                    }
+                },
+                description: 'Toggle TTS On/Off'
             }
         ];
 

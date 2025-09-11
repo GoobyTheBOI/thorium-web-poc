@@ -10,6 +10,7 @@ export interface TtsVoicePanelProps {
   voicesError: string | null;
   isGenerating: boolean;
   isPlaying: boolean;
+  isEnabled?: boolean;
   onVoiceChange: (voiceId: string) => void;
 }
 
@@ -20,6 +21,7 @@ export const TtsVoicePanel: React.FC<TtsVoicePanelProps> = ({
   voicesError,
   isGenerating,
   isPlaying,
+  isEnabled = true,
   onVoiceChange
 }) => {
   return (
@@ -28,7 +30,7 @@ export const TtsVoicePanel: React.FC<TtsVoicePanelProps> = ({
         voices={voices}
         selectedVoice={selectedVoice}
         onVoiceChange={onVoiceChange}
-        disabled={isGenerating || isPlaying}
+        disabled={!isEnabled || isGenerating || isPlaying}
         loading={isLoadingVoices}
         error={voicesError}
       />

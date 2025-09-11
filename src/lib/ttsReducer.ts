@@ -14,6 +14,7 @@ export interface TtsReducerState {
   isPaused: boolean;
   isGenerating: boolean;
   error: string | null;
+  isEnabled: boolean;
 }
 
 const INITIAL_STATE: TtsReducerState = {
@@ -33,6 +34,7 @@ const INITIAL_STATE: TtsReducerState = {
   isPaused: false,
   isGenerating: false,
   error: null,
+  isEnabled: true,
 };
 
 const ttsReducer = createSlice({
@@ -84,6 +86,28 @@ const ttsReducer = createSlice({
 
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
+    },
+
+    setIsEnabled: (state, action: PayloadAction<boolean>) => {
+      state.isEnabled = action.payload;
+      // When TTS is disabled, stop any current playback
+      if (!action.payload) {
+        state.isPlaying = false;
+        state.isPaused = false;
+        state.isGenerating = false;
+        state.error = null;
+      }
+    },
+
+    toggleTts: (state) => {
+      state.isEnabled = !state.isEnabled;
+      // When TTS is disabled, stop any current playback
+      if (!state.isEnabled) {
+        state.isPlaying = false;
+        state.isPaused = false;
+        state.isGenerating = false;
+        state.error = null;
+      }
     },
 
     // Complex Actions (combining multiple state updates)
@@ -153,6 +177,8 @@ export const {
   setIsPaused,
   setIsGenerating,
   setError,
+  setIsEnabled,
+  toggleTts,
 
   // Complex Actions
   startVoiceLoading,

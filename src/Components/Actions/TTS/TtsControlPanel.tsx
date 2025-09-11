@@ -28,7 +28,7 @@ export const TtsControlPanel: React.FC<TtsControlPanelProps> = ({
   };
 
   const isStartButtonDisabled = (): boolean => {
-    return !selectedVoice || ttsState.isGenerating || ttsState.isPlaying;
+    return !ttsState.isEnabled || !selectedVoice || ttsState.isGenerating || ttsState.isPlaying;
   };
 
   const getPauseResumeButtonText = (): string => {
@@ -40,7 +40,7 @@ export const TtsControlPanel: React.FC<TtsControlPanelProps> = ({
   };
 
   const isControlButtonDisabled = (): boolean => {
-    return !ttsState.isPlaying && !ttsState.isPaused;
+    return !ttsState.isEnabled || (!ttsState.isPlaying && !ttsState.isPaused);
   };
 
   return (

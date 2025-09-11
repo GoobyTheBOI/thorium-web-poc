@@ -10,7 +10,7 @@ import { TtsState } from '@/lib/managers/TtsStateManager';
 import styles from "./ActivateTtsContainer.module.css";
 
 import { useTts } from "@/Components/Actions/TTS/hooks";
-import { TtsProviderSelector, TtsVoicePanel, TtsControlPanel, TtsStatusDisplay } from "../../../../Components/Actions/TTS";
+import { TtsProviderSelector, TtsVoicePanel, TtsControlPanel, TtsStatusDisplay, TtsToggle } from "../../../../Components/Actions/TTS";
 
 export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (props) => {
     const dispatch = useAppDispatch();
@@ -75,6 +75,14 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
             </ThContainerHeader>
 
             <ThContainerBody>
+                <TtsToggle
+                    isEnabled={ttsState.isEnabled}
+                    isPlaying={ttsState.isPlaying}
+                    isPaused={ttsState.isPaused}
+                    isGenerating={ttsState.isGenerating}
+                    onToggle={actions.toggleTtsEnabled}
+                />
+
                 <TtsStatusDisplay
                     ttsState={{
                         ...ttsState,
@@ -90,6 +98,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     isRecreatingServices={adapterState.isRecreatingServices}
                     isGenerating={ttsState.isGenerating}
                     isPlaying={ttsState.isPlaying}
+                    isEnabled={ttsState.isEnabled}
                     onAdapterChange={actions.changeAdapter}
                 />
 
@@ -100,6 +109,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                     voicesError={voiceState.voicesError}
                     isGenerating={ttsState.isGenerating}
                     isPlaying={ttsState.isPlaying}
+                    isEnabled={ttsState.isEnabled}
                     onVoiceChange={actions.changeVoice}
                 />
 

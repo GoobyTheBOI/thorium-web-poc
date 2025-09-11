@@ -1,19 +1,22 @@
 import { useRef, useCallback, useEffect } from 'react';
-import { createTTSServices, destroyTTSServices, TTSServices } from '@/lib/factories/TTSServicesFactory';
+import { createTTSServices, destroyTTSServices, TTSServices, TTSFactoryCallbacks } from '@/lib/factories/TTSServicesFactory';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
 import { TtsState } from '@/lib/managers/TtsStateManager';
 
 export interface UseServiceManagerProps {
   onStateChange: (state: TtsState) => void;
   onAdapterSwitch: (adapter: AdapterType) => void;
+  onToggle?: () => void;
 }
 
-export function useServiceManager({ onStateChange, onAdapterSwitch }: UseServiceManagerProps) {
+export function useServiceManager({ onStateChange, onAdapterSwitch, onToggle }: UseServiceManagerProps) {
   const servicesRef = useRef<TTSServices | null>(null);
   const currentAdapterTypeRef = useRef<AdapterType>('elevenlabs');
 
   const onStateChangeRef = useRef(onStateChange);
   const onAdapterSwitchRef = useRef(onAdapterSwitch);
+
+  const onToggleRef = useRef(onToggle);
 
   useEffect(() => {
     onStateChangeRef.current = onStateChange;
@@ -22,6 +25,10 @@ export function useServiceManager({ onStateChange, onAdapterSwitch }: UseService
   useEffect(() => {
     onAdapterSwitchRef.current = onAdapterSwitch;
   }, [onAdapterSwitch]);
+
+  useEffect(() => {
+    onToggleRef.current = onToggle;
+  }, [onToggle]);
 
   const getServices = useCallback((adapterType?: AdapterType): TTSServices => {
     const targetAdapterType = adapterType || currentAdapterTypeRef.current;
@@ -33,9 +40,10 @@ export function useServiceManager({ onStateChange, onAdapterSwitch }: UseService
     }
 
     if (!servicesRef.current) {
-      const callbacks = {
+      const callbacks: TTSFactoryCallbacks = {
         onStateChange: onStateChangeRef.current,
         onAdapterSwitch: onAdapterSwitchRef.current,
+        onToggle: onToggleRef.current,
       };
       servicesRef.current = createTTSServices(targetAdapterType, callbacks);
       currentAdapterTypeRef.current = targetAdapterType;

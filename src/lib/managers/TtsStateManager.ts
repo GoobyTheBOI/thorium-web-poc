@@ -4,6 +4,7 @@ export interface TtsState {
     isGenerating: boolean;
     error: string | null;
     currentAdapter: string | null;
+    isEnabled: boolean;
 }
 
 export type TtsStateListener = (state: TtsState) => void;
@@ -14,7 +15,8 @@ export class TtsStateManager {
         isPaused: false,
         isGenerating: false,
         error: null,
-        currentAdapter: null
+        currentAdapter: null,
+        isEnabled: true
     };
 
     private listeners: TtsStateListener[] = [];
@@ -62,6 +64,25 @@ export class TtsStateManager {
 
     setAdapter(adapter: string): void {
         this.setState({ currentAdapter: adapter });
+    }
+
+    setEnabled(isEnabled: boolean): void {
+        if (!isEnabled) {
+            // When disabling TTS, stop any current playback
+            this.setState({
+                isEnabled,
+                isPlaying: false,
+                isPaused: false,
+                isGenerating: false,
+                error: null
+            });
+        } else {
+            this.setState({ isEnabled });
+        }
+    }
+
+    toggleEnabled(): void {
+        this.setEnabled(!this.state.isEnabled);
     }
 
     reset(): void {

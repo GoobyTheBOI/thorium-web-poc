@@ -22,6 +22,11 @@ export interface UseTtsControlProps {
 export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsControlProps) {
 
   const generateTts = useCallback(async () => {
+    if (!state.isEnabled) {
+      handleError('TTS is uitgeschakeld. Schakel TTS eerst in om audio te genereren.');
+      return;
+    }
+    
     if (!state.selectedVoice) {
       handleError('Please select a voice');
       return;
@@ -47,7 +52,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
       const errorMessage = extractErrorMessage(error, 'Failed to generate audio');
       handleError(errorMessage);
     }
-  }, [state.selectedVoice, getServices, dispatch, onError]);
+  }, [state.selectedVoice, state.isEnabled, getServices, dispatch, onError]);
 
   const handleError = (errorMessage: string) => {
     dispatch(setVoicesError(errorMessage));
@@ -64,18 +69,26 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
   };
 
   const pause = useCallback(() => {
+    if (!state.isEnabled) {
+      return; // Silently ignore if TTS is disabled
+    }
+    
     if (canPause()) {
       const { orchestrationService } = getServices();
       orchestrationService.pauseReading();
     }
-  }, [getServices, state.isPlaying, state.isPaused]);
+  }, [getServices, state.isPlaying, state.isPaused, state.isEnabled]);
 
   const resume = useCallback(() => {
+    if (!state.isEnabled) {
+      return; // Silently ignore if TTS is disabled
+    }
+    
     if (canResume()) {
       const { orchestrationService } = getServices();
       orchestrationService.resumeReading();
     }
-  }, [getServices, state.isPlaying, state.isPaused]);
+  }, [getServices, state.isPlaying, state.isPaused, state.isEnabled]);
 
   const stop = useCallback(() => {
     const { orchestrationService } = getServices();

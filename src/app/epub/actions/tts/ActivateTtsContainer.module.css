@@ -161,3 +161,70 @@
     font-weight: bold;
     border: 1px solid #ccc;
 }
+
+/* TTS Toggle Styles */
+.toggleContainer {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+}
+
+.toggleSection {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.statusIndicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+}
+
+.statusText {
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.statusText.enabled {
+    color: #28a745;
+}
+
+.statusText.disabled {
+    color: #6c757d;
+}
+
+.statusDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.statusDot.enabledDot {
+    background-color: #28a745;
+    box-shadow: 0 0 4px rgba(40, 167, 69, 0.4);
+}
+
+.statusDot.disabledDot {
+    background-color: #6c757d;
+}
+
+.disabledNotice {
+    padding: 8px 12px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    border-left: 4px solid #6c757d;
+    margin-top: 10px;
+}
+
+.disabledNotice small {
+    color: #6c757d;
+    font-size: 12px;
+    font-style: italic;
+}

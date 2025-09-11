@@ -16,7 +16,11 @@ export interface TTSServices {
     currentAdapter: IPlaybackAdapter;
 }
 
-export function createTTSServices(adapterType: AdapterType, callbacks?: TtsCallbacks): TTSServices {
+export interface TTSFactoryCallbacks extends TtsCallbacks {
+    onToggle?: () => void;
+}
+
+export function createTTSServices(adapterType: AdapterType, callbacks?: TTSFactoryCallbacks): TTSServices {
     const textExtractionService = new EpubTextExtractionService();
     const voiceManagementService = new VoiceManagementService();
     const stateManager = new TtsStateManager();
@@ -32,7 +36,7 @@ export function createTTSServices(adapterType: AdapterType, callbacks?: TtsCallb
         callbacks
     );
 
-    const keyboardHandler = new TtsKeyboardHandler(orchestrationService);
+    const keyboardHandler = new TtsKeyboardHandler(orchestrationService, callbacks?.onToggle);
     const voiceHandler = new VoiceHandler({ adapter });
 
     return {

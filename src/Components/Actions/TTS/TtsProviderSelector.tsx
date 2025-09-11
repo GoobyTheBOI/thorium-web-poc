@@ -9,6 +9,7 @@ export interface TtsProviderSelectorProps {
   isRecreatingServices: boolean;
   isGenerating: boolean;
   isPlaying: boolean;
+  isEnabled?: boolean;
   onAdapterChange: (adapterType: AdapterType) => void;
 }
 
@@ -18,17 +19,22 @@ export const TtsProviderSelector: React.FC<TtsProviderSelectorProps> = ({
   isRecreatingServices,
   isGenerating,
   isPlaying,
+  isEnabled = true,
   onAdapterChange
 }) => {
   const currentAdapter = availableAdapters.find(a => a.key === selectedAdapterType);
+
+  const handleAdapterChange = (value: string) => {
+    onAdapterChange(value as AdapterType);
+  };
 
   return (
     <div className={styles.adapterSelection}>
       <Select
         label="TTS Provider"
         value={selectedAdapterType}
-        onChange={(value) => onAdapterChange(value as AdapterType)}
-        disabled={isGenerating || isPlaying || isRecreatingServices}
+        onChange={handleAdapterChange}
+        disabled={isRecreatingServices || isGenerating || isPlaying || !isEnabled}
         className={styles.select}
       >
         {availableAdapters.map((adapter) => (
