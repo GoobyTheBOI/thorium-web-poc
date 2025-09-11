@@ -7,8 +7,7 @@ import ttsReducer, {
   setIsPaused,
   setIsGenerating,
   setError,
-  toggleTts,
-  setIsEnabled
+  toggleTts
 } from '@/lib/ttsReducer';
 
 import { useServiceManager } from './useServiceManager';
@@ -69,42 +68,6 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
 
   // Create a ref to hold the changeAdapter function
   const changeAdapterRef = useRef<((adapterType: AdapterType) => void) | null>(null);
-  const servicesRef = useRef<any>(null);
-
-  // TTS Toggle functionality (defined early so it can be passed to service manager)
-  const toggleTtsEnabled = useCallback(() => {
-    const currentlyEnabled = state.isEnabled;
-    
-    // If currently enabled and playing/paused, stop the audio first
-    if (currentlyEnabled && (state.isPlaying || state.isPaused)) {
-      try {
-        const services = servicesRef.current;
-        if (services) {
-          services.orchestrationService.stopReading();
-        }
-      } catch (error) {
-        console.error('Error stopping TTS during toggle:', error);
-      }
-    }
-    
-    dispatch(toggleTts());
-  }, [state.isEnabled, state.isPlaying, state.isPaused, dispatch]);
-
-  const setTtsEnabled = useCallback((enabled: boolean) => {
-    // If disabling and currently playing/paused, stop the audio first
-    if (!enabled && (state.isPlaying || state.isPaused)) {
-      try {
-        const services = servicesRef.current;
-        if (services) {
-          services.orchestrationService.stopReading();
-        }
-      } catch (error) {
-        console.error('Error stopping TTS during disable:', error);
-      }
-    }
-    
-    dispatch(setIsEnabled(enabled));
-  }, [state.isPlaying, state.isPaused, dispatch]);
 
   const handleAdapterSwitch = useCallback((adapterType: AdapterType) => {
     if (changeAdapterRef.current) {
@@ -115,17 +78,7 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
   const { getServices, cleanup, getKeyboardShortcuts } = useServiceManager({
     onStateChange: stableStateChangeCallback,
     onAdapterSwitch: handleAdapterSwitch,
-    onToggle: toggleTtsEnabled,
   });
-
-  // Store services reference for toggle functionality
-  useEffect(() => {
-    try {
-      servicesRef.current = getServices();
-    } catch (error) {
-      console.error('Error getting services:', error);
-    }
-  }, [getServices]);
 
   const { loadVoices, changeVoice } = useVoiceActions({
     getServices,
@@ -160,6 +113,10 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
     cleanup
   });
 
+  const toggleTtsEnabled = useCallback(() => {
+    dispatch(toggleTts());
+  }, [dispatch]);
+
   return {
     ttsState: {
       isPlaying: state.isPlaying,
@@ -188,7 +145,6 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
       changeAdapter,
       loadVoices,
       toggleTtsEnabled,
-      setTtsEnabled,
     },
 
     cleanup,

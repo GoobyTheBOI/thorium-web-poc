@@ -43,9 +43,15 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
         }
     }, [getKeyboardShortcuts]);
 
+    // Cleanup only when component unmounts, not when popup closes
+    useEffect(() => {
+        return () => {
+            cleanup();
+        };
+    }, [cleanup]);
+
     const handleClose = useCallback(() => {
         actions.stop();
-        cleanup();
         dispatch({
             type: "actions/setActionOpen",
             payload: {
@@ -53,7 +59,7 @@ export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (pro
                 isOpen: false
             }
         });
-    }, [actions, cleanup, dispatch]);
+    }, [actions, dispatch]);
 
     if (!isOpen) return null;
 
