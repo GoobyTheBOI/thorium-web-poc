@@ -17,7 +17,6 @@ export class DefaultTextProcessor implements ITextProcessor {
         const cleanText = this.escapeSSML(normalizedText);
         const detectedType = this.detectElementType(elementType);
 
-        console.log(`Formatting text: "${cleanText}" as type: ${detectedType}`);
 
         switch (detectedType) {
             case 'heading':
@@ -109,7 +108,8 @@ export class ElevenLabsTextProcessor implements ITextProcessor {
             .trim();
 
         const detectedType = this.detectElementType(elementType);
-        console.log(`ElevenLabs formatting text: "${normalizedText}" as type: ${detectedType}`);
+        // ElevenLabs text formatting is tracked through the processing pipeline
+        // No logging needed for internal operations
 
         switch (detectedType) {
             case 'heading':

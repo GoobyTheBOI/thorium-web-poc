@@ -1,3 +1,5 @@
+import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
+
 export interface TtsState {
     isPlaying: boolean;
     isPaused: boolean;
@@ -99,7 +101,8 @@ export class TtsStateManager {
             try {
                 listener(this.getState());
             } catch (error) {
-                console.error('Error in TTS state listener:', error);
+                // Silently handle listener errors to prevent disrupting other listeners
+                handleDevelopmentError(error, 'TTS State Listener Error');
             }
         });
     }

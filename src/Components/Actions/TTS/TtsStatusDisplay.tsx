@@ -33,10 +33,20 @@ export const TtsStatusDisplay: React.FC<TtsStatusDisplayProps> = ({
 
   return (
     <>
+      {/* Display voices loading/API errors */}
       {voicesError && (
         <div className={styles.errorContainer}>
           <p className={styles.errorText}>
-            Error: {voicesError}
+            Voice Error: {voicesError}
+          </p>
+        </div>
+      )}
+
+      {/* Display TTS state errors */}
+      {ttsState.error && (
+        <div className={styles.errorContainer}>
+          <p className={styles.errorText}>
+            TTS Error: {ttsState.error}
           </p>
         </div>
       )}

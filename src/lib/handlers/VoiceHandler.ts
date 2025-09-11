@@ -1,4 +1,5 @@
 import { IPlaybackAdapter, VoiceInfo } from '@/preferences/types';
+import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export interface VoiceChangeCallback {
     onVoiceChanged?: (voiceId: string, voiceInfo?: VoiceInfo) => void;
@@ -68,7 +69,6 @@ export class VoiceHandler {
             const voiceInfo = this.currentVoices.find(v => v.id === voiceId);
 
             this.callbacks.onVoiceChanged?.(voiceId, voiceInfo);
-            console.log(`VoiceHandler: Voice set to ${voiceId}${voiceInfo ? ` (${voiceInfo.name})` : ''}`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to set voice';
             this.callbacks.onVoiceError?.(errorMessage, voiceId);
@@ -111,7 +111,8 @@ export class VoiceHandler {
 
             return null;
         } catch (error) {
-            console.warn('VoiceHandler: Failed to get current voice gender:', error);
+            // Silently handle voice gender retrieval errors
+            handleDevelopmentError(error, 'Voice Handler Gender Error');
             return null;
         }
     }

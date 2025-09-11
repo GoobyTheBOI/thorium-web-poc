@@ -5,7 +5,7 @@ import { TtsStateManager, TtsState } from '../managers/TtsStateManager';
 import { createAdapter, AdapterType } from '../factories/AdapterFactory';
 import { VoiceManagementService } from './VoiceManagementService';
 import { TextChunk } from '@/types/tts';
-import { extractErrorMessage } from '@/lib/utils/errorUtils';
+import { extractErrorMessage, createNetworkAwareError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 // Constants for TTS error detection
 const TTS_ERROR_KEYWORDS = ['TTS', 'audio', 'speech', 'voice'];
@@ -281,12 +281,13 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
     }
 
     private handleExecutionError(error: unknown): void {
-        console.error('TTS Orchestration: Failed to start reading', error);
+        const providerName = this.currentAdapterType === 'elevenlabs' ? 'ElevenLabs' : 'Azure Speech';
+        const ttsError = createNetworkAwareError(error, providerName);
 
-        const errorMessage = extractErrorMessage(error, 'Failed to start reading');
+        this.stateManager.setError(ttsError.message);
 
-        this.stateManager.setError(errorMessage);
-        throw error;
+        // Only throw in development for debugging
+        handleDevelopmentError(error, 'TTS Orchestration Error');
     }
 
     private cleanupExecution(): void {

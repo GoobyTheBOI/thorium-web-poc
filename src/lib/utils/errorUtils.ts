@@ -83,3 +83,14 @@ export function createNetworkAwareError(
         error
     );
 }
+
+/**
+ * Handle development errors - throws in development, silently handles in production
+ */
+export function handleDevelopmentError(error: unknown, context: string): void {
+    if (process.env.NODE_ENV === 'development') {
+        const errorMessage = extractErrorMessage(error, `Error in ${context}`);
+        throw new Error(`${context}: ${errorMessage}`);
+    }
+    // Silently handle in production
+}

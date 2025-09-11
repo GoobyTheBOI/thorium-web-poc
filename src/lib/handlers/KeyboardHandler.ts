@@ -1,3 +1,5 @@
+import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
+
 export interface KeyboardShortcut {
     key: string;
     ctrlKey?: boolean;
@@ -71,7 +73,8 @@ export class KeyboardHandler {
             try {
                 shortcut.action();
             } catch (error) {
-                console.error(`Error executing shortcut ${key}:`, error);
+                // Silently handle shortcut execution errors
+                handleDevelopmentError(error, `Keyboard Shortcut Error (${key})`);
             }
         }
     }

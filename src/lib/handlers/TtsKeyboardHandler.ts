@@ -1,6 +1,7 @@
 import { KeyboardHandler, KeyboardShortcut } from './KeyboardHandler';
 import { ITtsOrchestrationService } from '../services/TtsOrchestrationService';
 import { INTERACTION_CONSTANTS } from '../constants/uiConstants';
+import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export class TtsKeyboardHandler {
     private keyboardHandler: KeyboardHandler;
@@ -48,8 +49,10 @@ export class TtsKeyboardHandler {
                         }
 
                         this.lastStartTime = now;
-                        console.log('TTS: Starting reading via keyboard shortcut');
-                        this.orchestrationService.startReading().catch(console.error);
+                        this.orchestrationService.startReading().catch(error => {
+                            // Start reading errors are handled by the orchestration service
+                            handleDevelopmentError(error, 'TTS Keyboard Handler Error');
+                        });
                     } else if (this.orchestrationService.isPlaying()) {
                         // Pause if currently playing
                         this.orchestrationService.pauseReading();
@@ -77,7 +80,8 @@ export class TtsKeyboardHandler {
                     try {
                         this.orchestrationService.switchAdapter();
                     } catch (error) {
-                        console.error('Failed to switch adapter:', error);
+                        // Silently handle adapter switch errors
+                        handleDevelopmentError(error, 'TTS Adapter Switch Error');
                     }
                 },
                 description: 'Switch TTS Adapter'

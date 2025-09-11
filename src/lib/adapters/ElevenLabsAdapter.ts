@@ -8,8 +8,8 @@ import type {
 } from '@/preferences/types';
 import { TextChunk } from '@/types/tts';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
+import { extractErrorMessage, createNetworkAwareError, createError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 import { playUniversal, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
-import { createNetworkAwareError, createError } from '@/lib/utils/errorUtils';
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -63,7 +63,6 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
     private async setVoice(voiceId: string): Promise<void> {
         this.voiceService.selectVoice(voiceId);
         this.config.voiceId = voiceId;
-        console.log(`ElevenLabsAdapter: Voice changed to ${voiceId}`);
     }
 
     private async getVoicesByGender(gender: 'male' | 'female'): Promise<VoiceInfo[]> {
@@ -106,23 +105,17 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
             this.currentAudio.pause();
             this.updatePlaybackState(false, true);
             this.emitEvent('pause', { audio: this.currentAudio });
-            console.log('ElevenLabsAdapter: Audio paused');
-        } else {
-            console.warn('ElevenLabsAdapter: No audio to pause or already paused');
         }
     }
 
     resume(): void {
         if (this.currentAudio && this.isPaused) {
             this.currentAudio.play().catch(error => {
-                console.error('ElevenLabsAdapter: Resume failed:', error);
-                this.emitEvent('error', { error });
+                const ttsError = createNetworkAwareError(error, 'ElevenLabs');
+                this.emitEvent('error', { error: ttsError });
             });
             this.updatePlaybackState(true, false);
             this.emitEvent('resume', { audio: this.currentAudio });
-            console.log('ElevenLabsAdapter: Audio resumed');
-        } else {
-            console.warn('ElevenLabsAdapter: No audio to resume or not paused');
         }
     }
 
@@ -132,9 +125,6 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
             this.currentAudio.currentTime = 0;
             this.updatePlaybackState(false, false);
             this.emitEvent('stop', { audio: this.currentAudio });
-            console.log('ElevenLabsAdapter: Audio stopped');
-        } else {
-            console.warn('ElevenLabsAdapter: No audio to stop');
         }
     }
 
@@ -175,22 +165,15 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
     }
 
     private async executePlayRequest(config: PlayRequestConfig): Promise<PlayResult> {
-        console.log('ElevenLabsAdapter: Starting play request with config:', {
-            text: typeof config.text === 'string' ? config.text.substring(0, 50) + '...' : `${config.text.length} chunks`,
-            voiceId: config.voiceId,
-            modelId: config.modelId
-        });
 
         try {
             // Clean up any existing audio first
             this.cleanup();
 
             // Make API request
-            console.log('ElevenLabsAdapter: Making API request...');
             const response = await this.makeApiRequest(config);
 
             // Process response
-            console.log('ElevenLabsAdapter: Processing API response...');
             const { audioBlob, requestId } = await this.processApiResponse(response);
 
             // Setup and start audio playback
@@ -259,7 +242,8 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
                 try {
                     callback(info);
                 } catch (error) {
-                    console.error(`Error in event listener for ${event}:`, error);
+                    // Silently handle listener errors to prevent disrupting other listeners
+                    handleDevelopmentError(error, `ElevenLabs Adapter Event Listener Error (${event})`);
                 }
             });
         }
@@ -313,6 +297,5 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
     public destroy(): void {
         this.cleanup();
         this.eventListeners.clear();
-        console.log('ElevenLabsAdapter: Destroyed and cleaned up');
     }
 }

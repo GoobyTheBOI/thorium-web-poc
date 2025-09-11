@@ -8,8 +8,8 @@ import {
 } from "@/preferences/types";
 import { TextChunk } from "@/types/tts";
 import { VoiceManagementService } from "@/lib/services/VoiceManagementService";
+import { extractErrorMessage, createNetworkAwareError, createError, handleDevelopmentError } from "@/lib/utils/errorUtils";
 import { playUniversal, TextToAudioAdapter } from "@/lib/utils/audioPlaybackUtils";
-import { createNetworkAwareError, createError } from '@/lib/utils/errorUtils';
 
 interface PlayRequestConfig {
     text: string | TextChunk[];
@@ -188,7 +188,8 @@ export class AzureAdapter implements IPlaybackAdapter, TextToAudioAdapter {
                 try {
                     callback(info);
                 } catch (error) {
-                    console.error(`Error in event listener for ${event}:`, error);
+                    // Silently handle listener errors to prevent disrupting other listeners
+                    handleDevelopmentError(error, `Azure Adapter Event Listener Error (${event})`);
                 }
             });
         }
@@ -283,8 +284,8 @@ export class AzureAdapter implements IPlaybackAdapter, TextToAudioAdapter {
         }
 
         this.currentAudio!.play().catch(error => {
-            console.error('AzureAdapter: Resume failed:', error);
-            this.emitEvent('error', { error });
+            const ttsError = createNetworkAwareError(error, 'Azure Speech');
+            this.emitEvent('error', { error: ttsError });
         });
         this.updatePlaybackState(true, false);
         this.emitEvent('resume', { audio: this.currentAudio });

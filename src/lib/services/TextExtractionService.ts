@@ -1,4 +1,5 @@
 import { TextChunk, IFRAME_SELECTORS } from '@/types/tts';
+import { extractErrorMessage, createError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export interface ITextExtractionService {
     extractTextChunks(): Promise<TextChunk[]>;
@@ -28,7 +29,8 @@ export class EpubTextExtractionService implements ITextExtractionService {
 
             return chunks;
         } catch (error) {
-            console.error('Error extracting text with elements:', error);
+            // Silently fall back to default text extraction on error
+            handleDevelopmentError(error, 'Text Extraction Error');
             return await this.createFallbackChunk();
         }
     }
@@ -54,7 +56,6 @@ export class EpubTextExtractionService implements ITextExtractionService {
             }
         }
 
-        console.warn('No accessible iframe found');
         return null;
     }
 
@@ -306,7 +307,8 @@ export class EpubTextExtractionService implements ITextExtractionService {
 
             return "Unable to extract text from current position.";
         } catch (error) {
-            console.error('Error extracting fallback text:', error);
+            // Silently handle fallback text extraction errors
+            handleDevelopmentError(error, 'Fallback Text Extraction Error');
             return "Error extracting text from current view.";
         }
     }
@@ -442,7 +444,8 @@ export class EpubTextExtractionService implements ITextExtractionService {
             // Wait for URL change or content change
             return await this.waitForNavigation(oldUrl);
         } catch (error) {
-            console.warn('TC-03a: Error clicking next button:', error);
+            // Silently handle navigation click errors
+            handleDevelopmentError(error, 'Navigation Click Error');
             return false;
         }
     }
@@ -477,7 +480,8 @@ export class EpubTextExtractionService implements ITextExtractionService {
 
             return await this.waitForNavigation(oldUrl);
         } catch (error) {
-            console.warn('TC-03a: Error with keyboard navigation:', error);
+            // Silently handle keyboard navigation errors
+            handleDevelopmentError(error, 'Keyboard Navigation Error');
             return false;
         }
     }
@@ -511,7 +515,8 @@ export class EpubTextExtractionService implements ITextExtractionService {
 
             return false;
         } catch (error) {
-            console.warn('TC-03a: Error with Thorium navigation:', error);
+            // Silently handle Thorium navigation errors
+            handleDevelopmentError(error, 'Thorium Navigation Error');
             return false;
         }
     }

@@ -1,5 +1,6 @@
 import { getVoices, IVoices } from "readium-speech";
 import { VoiceInfo } from "@/preferences/types";
+import { extractErrorMessage, createNetworkAwareError } from "@/lib/utils/errorUtils";
 
 export interface IVoiceManagementService {
     loadRediumVoices(): Promise<IVoices[]>;
@@ -30,8 +31,7 @@ export class VoiceManagementService implements IVoiceManagementService {
                 gender: voice.gender
             }));
         } catch (error) {
-            console.error('Failed to load voices:', error);
-            throw error;
+            throw createNetworkAwareError(error, 'ElevenLabs');
         }
     }
 
@@ -47,8 +47,7 @@ export class VoiceManagementService implements IVoiceManagementService {
             this.elevenLabsVoices = data.voices;
             return this.elevenLabsVoices;
         } catch (error) {
-            console.error('Failed to load ElevenLabs voices:', error);
-            throw error;
+            throw createNetworkAwareError(error, 'ElevenLabs');
         }
     }
 
@@ -64,8 +63,7 @@ export class VoiceManagementService implements IVoiceManagementService {
             this.azureVoices = data;
             return this.azureVoices;
         } catch (error) {
-            console.error('Failed to load Azure voices:', error);
-            throw error;
+            throw createNetworkAwareError(error, 'Azure Speech');
         }
     }
 
@@ -102,7 +100,6 @@ export class VoiceManagementService implements IVoiceManagementService {
 
     selectVoice(voiceId: string): void {
         this.selectedVoice = voiceId;
-        console.log(`Voice selected: ${voiceId}`);
     }
 
     getSelectedVoice(): string | null {
