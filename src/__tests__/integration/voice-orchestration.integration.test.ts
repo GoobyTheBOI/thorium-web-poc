@@ -3,6 +3,7 @@ import { TtsOrchestrationService } from '@/lib/services/TtsOrchestrationService'
 import { EpubTextExtractionService } from '@/lib/services/TextExtractionService';
 import { TtsStateManager } from '@/lib/managers/TtsStateManager';
 import { createAdapter } from '@/lib/factories/AdapterFactory';
+import type { VoiceInfo, PlaybackEventType } from '@/preferences/types';
 
 jest.mock('@/lib/adapters/ElevenLabsAdapter');
 jest.mock('@/lib/adapters/AzureAdapter');
@@ -12,7 +13,22 @@ jest.mock('@/lib/services/TextExtractionService');
 describe('Voice and Orchestration Integration', () => {
   let voiceService: VoiceManagementService;
   let orchestrationService: TtsOrchestrationService;
-  let mockAdapter: any;
+  let mockAdapter: jest.Mocked<{
+    processTextChunk: (chunk: unknown) => Promise<ArrayBuffer>;
+    play: (chunk: unknown) => Promise<unknown>;
+    pause: () => Promise<unknown>;
+    playTextChunk: (chunk: unknown) => Promise<unknown>;
+    startPlayback: (data: ArrayBuffer) => void;
+    stopPlayback: () => void;
+    isPlaying: boolean;
+    on: (event: PlaybackEventType, callback: (info: unknown) => void) => void;
+    off: (event: PlaybackEventType, callback: (info: unknown) => void) => void;
+    voices: {
+      getVoices: () => Promise<VoiceInfo[]>;
+      setVoice: (voiceId: string) => Promise<void>;
+      getCurrentVoice: () => VoiceInfo | null;
+    };
+  }>;
 
   beforeEach(() => {
     // Create event listeners storage for the mock adapter
@@ -27,7 +43,7 @@ describe('Voice and Orchestration Integration', () => {
       startPlayback: jest.fn(),
       stopPlayback: jest.fn(),
       isPlaying: false,
-      on: jest.fn((event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void) => {
+      on: jest.fn((event: PlaybackEventType, callback: (info: unknown) => void) => {
         if (!eventListeners[event]) {
           eventListeners[event] = [];
         }
@@ -35,9 +51,9 @@ describe('Voice and Orchestration Integration', () => {
       }),
       off: jest.fn(),
       voices: {
-        getVoices: jest.fn(),
-        setVoice: jest.fn(),
-        getCurrentVoice: jest.fn(),
+        getVoices: jest.fn().mockResolvedValue([]),
+        setVoice: jest.fn().mockResolvedValue(undefined),
+        getCurrentVoice: jest.fn().mockReturnValue(null),
       },
     };
 
@@ -85,9 +101,9 @@ describe('Voice and Orchestration Integration', () => {
 
     // Manually trigger the play event since our mock might not be working as expected
     const onSpy = mockAdapter.on;
-    const playCallback = onSpy.mock.calls.find(call => call[0] === 'play')?.[1];
+    const playCallback = onSpy.mock.calls.find((call: unknown[]) => call[0] === 'play')?.[1];
     if (playCallback) {
-      playCallback({});
+      (playCallback as (...args: unknown[]) => void)({});
     }
 
     // Then: State reflects playing
@@ -97,9 +113,9 @@ describe('Voice and Orchestration Integration', () => {
     orchestrationService.pauseReading();
 
     // Manually trigger the pause event
-    const pauseCallback = onSpy.mock.calls.find(call => call[0] === 'pause')?.[1];
+    const pauseCallback = onSpy.mock.calls.find((call: unknown[]) => call[0] === 'pause')?.[1];
     if (pauseCallback) {
-      pauseCallback({});
+      (pauseCallback as (...args: unknown[]) => void)({});
     }
 
     // Then: State reflects paused

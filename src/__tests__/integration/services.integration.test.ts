@@ -3,6 +3,7 @@ import { TtsOrchestrationService } from '@/lib/services/TtsOrchestrationService'
 import { EpubTextExtractionService } from '@/lib/services/TextExtractionService';
 import { TtsStateManager } from '@/lib/managers/TtsStateManager';
 import { createAdapter } from '@/lib/factories/AdapterFactory';
+import type { VoiceInfo } from '@/preferences/types';
 
 // Mock external dependencies
 jest.mock('@/lib/adapters/ElevenLabsAdapter');
@@ -14,7 +15,21 @@ describe('Core Service Integration', () => {
   let orchestrationService: TtsOrchestrationService;
   let textExtractionService: EpubTextExtractionService;
   let stateManager: TtsStateManager;
-  let mockAdapter: any;
+  let mockAdapter: jest.Mocked<{
+    processTextChunk: (chunk: unknown) => Promise<ArrayBuffer>;
+    play: (chunk: unknown) => Promise<unknown>;
+    playTextChunk: (chunk: unknown) => Promise<unknown>;
+    startPlayback: (data: ArrayBuffer) => void;
+    stopPlayback: () => void;
+    isPlaying: boolean;
+    on: (event: string, callback: (info: unknown) => void) => void;
+    off: (event: string, callback: (info: unknown) => void) => void;
+    voices: {
+      getVoices: () => Promise<VoiceInfo[]>;
+      setVoice: (voiceId: string) => Promise<void>;
+      getCurrentVoice: () => VoiceInfo | null;
+    };
+  }>;
 
   beforeEach(() => {
     // Create mock adapter
@@ -28,11 +43,11 @@ describe('Core Service Integration', () => {
       on: jest.fn(),
       off: jest.fn(),
       voices: {
-        getVoices: jest.fn(),
-        setVoice: jest.fn(),
-        getCurrentVoice: jest.fn(),
+        getVoices: jest.fn().mockResolvedValue([]),
+        setVoice: jest.fn().mockResolvedValue(undefined),
+        getCurrentVoice: jest.fn().mockReturnValue(null),
       },
-    } as any;
+    };
 
     (createAdapter as jest.MockedFunction<typeof createAdapter>).mockReturnValue(mockAdapter);
 

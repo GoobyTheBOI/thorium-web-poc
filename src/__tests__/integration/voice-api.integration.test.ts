@@ -2,7 +2,7 @@ import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 
 // Mock error utilities
 jest.mock('@/lib/utils/errorUtils', () => ({
-  createNetworkAwareError: jest.fn((error: any, service: string) => {
+  createNetworkAwareError: jest.fn((error: unknown) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const newError = new Error(errorMessage);
     newError.name = 'NetworkAwareError';

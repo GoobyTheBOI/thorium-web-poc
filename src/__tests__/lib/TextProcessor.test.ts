@@ -567,15 +567,15 @@ describe('ElevenLabsTextProcessor - SOLID Architecture', () => {
 
   describe('Input Validation and Edge Cases', () => {
     test('formatText handles null and undefined input', () => {
-      expect(processor.formatText(null as any, 'normal')).toBe('');
-      expect(processor.formatText(undefined as any, 'normal')).toBe('');
+      expect(processor.formatText(null as unknown as string, 'normal')).toBe('');
+      expect(processor.formatText(undefined as unknown as string, 'normal')).toBe('');
       expect(processor.formatText('', 'normal')).toBe('');
     });
 
     test('formatText handles non-string input', () => {
-      expect(processor.formatText(123 as any, 'normal')).toBe('');
-      expect(processor.formatText({} as any, 'normal')).toBe('');
-      expect(processor.formatText([] as any, 'normal')).toBe('');
+      expect(processor.formatText(123 as unknown as string, 'normal')).toBe('');
+      expect(processor.formatText({} as unknown as string, 'normal')).toBe('');
+      expect(processor.formatText([] as unknown as string, 'normal')).toBe('');
     });
 
     test('formatText normalizes whitespace', () => {
@@ -591,8 +591,8 @@ describe('ElevenLabsTextProcessor - SOLID Architecture', () => {
 
     test('formatText handles null/undefined element types', () => {
       const text = 'test text';
-      expect(processor.formatText(text, null as any)).toBe('test text');
-      expect(processor.formatText(text, undefined as any)).toBe('test text');
+      expect(processor.formatText(text, null as unknown as string)).toBe('test text');
+      expect(processor.formatText(text, undefined as unknown as string)).toBe('test text');
     });
   });
 
@@ -607,14 +607,14 @@ describe('ElevenLabsTextProcessor - SOLID Architecture', () => {
       expect(processor.validateText('')).toBe(false);
       expect(processor.validateText('   ')).toBe(false);
       expect(processor.validateText('A')).toBe(false); // ElevenLabs requires at least 2 characters
-      expect(processor.validateText(null as any)).toBe(false);
-      expect(processor.validateText(undefined as any)).toBe(false);
+      expect(processor.validateText(null as unknown as string)).toBe(false);
+      expect(processor.validateText(undefined as unknown as string)).toBe(false);
     });
 
     test('validateText returns false for non-string input', () => {
-      expect(processor.validateText(123 as any)).toBe(false);
-      expect(processor.validateText({} as any)).toBe(false);
-      expect(processor.validateText([] as any)).toBe(false);
+      expect(processor.validateText(123 as unknown as string)).toBe(false);
+      expect(processor.validateText({} as unknown as string)).toBe(false);
+      expect(processor.validateText([] as unknown as string)).toBe(false);
     });
 
     test('validateText checks maximum text length', () => {

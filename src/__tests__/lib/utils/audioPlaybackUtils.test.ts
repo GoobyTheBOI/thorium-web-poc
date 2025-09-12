@@ -11,9 +11,12 @@ jest.mock('@/lib/utils/errorUtils', () => ({
   }))
 }));
 
+// Type alias for mocked HTMLAudioElement properties
+type MockAudioElementProps = 'addEventListener' | 'removeEventListener' | 'play' | 'pause' | 'currentTime' | 'duration' | 'volume';
+
 describe('audioPlaybackUtils', () => {
   let mockAdapter: jest.Mocked<TextToAudioAdapter>;
-  let mockAudio: jest.Mocked<HTMLAudioElement>;
+  let mockAudio: jest.Mocked<Pick<HTMLAudioElement, MockAudioElementProps>>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -27,11 +30,11 @@ describe('audioPlaybackUtils', () => {
       currentTime: 0,
       duration: 0,
       volume: 1,
-    } as any;
+    };
 
     // Create mock adapter
     mockAdapter = {
-      setupAudioPlayback: jest.fn().mockResolvedValue(mockAudio),
+      setupAudioPlayback: jest.fn().mockResolvedValue(mockAudio as unknown as HTMLAudioElement),
       emitEvent: jest.fn(),
       cleanup: jest.fn(),
       playTextChunk: jest.fn().mockResolvedValue('text-result'),
@@ -39,7 +42,7 @@ describe('audioPlaybackUtils', () => {
   });
 
   // Helper function to simulate successful audio ending
-  const simulateAudioSuccess = (audio: any) => {
+  const simulateAudioSuccess = (audio: jest.Mocked<Pick<HTMLAudioElement, MockAudioElementProps>>) => {
     setTimeout(() => {
       const endListener = (audio.addEventListener as jest.Mock).mock.calls
         .find(call => call[0] === 'ended')?.[1];
@@ -48,7 +51,7 @@ describe('audioPlaybackUtils', () => {
   };
 
   // Helper function to simulate audio error
-  const simulateAudioError = (audio: any, error: Error) => {
+  const simulateAudioError = (audio: jest.Mocked<Pick<HTMLAudioElement, MockAudioElementProps>>, error: Error) => {
     setTimeout(() => {
       const errorListener = (audio.addEventListener as jest.Mock).mock.calls
         .find(call => call[0] === 'error')?.[1];

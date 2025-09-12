@@ -56,9 +56,11 @@ export interface IAdapterConfig {
     useContext?: boolean;
 }
 
+export type PlaybackEventType = 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error';
+
 export interface IPlaybackEvents {
-    on(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void): void;
-    off(event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void): void;
+    on(event: PlaybackEventType, callback: (info: unknown) => void): void;
+    off(event: PlaybackEventType, callback: (info: unknown) => void): void;
 }
 
 export interface IPlaybackAdapter extends IAudioPlayback, IPlaybackEvents {
@@ -78,4 +80,34 @@ export interface ITTSError {
 
 export interface IAdapterFactory {
     createAdapter(type: 'elevenlabs' | 'web-speech', config: IAdapterConfig): IPlaybackAdapter;
+}
+
+// Window interface extensions for Thorium/Readium navigation APIs
+export interface WindowWithNavigationAPIs extends Window {
+    thorium?: {
+        reader?: {
+            nextPage?: () => Promise<void>;
+        };
+    };
+    readium?: {
+        navigator?: {
+            next?: () => Promise<void>;
+        };
+    };
+}
+
+export interface WindowWithThorium extends Window {
+    thorium?: {
+        reader: {
+            nextPage: jest.MockedFunction<() => Promise<boolean>>;
+        };
+    };
+}
+
+export interface WindowWithReadium extends Window {
+    readium?: {
+        navigator: {
+            next: jest.MockedFunction<() => Promise<boolean>>;
+        };
+    };
 }

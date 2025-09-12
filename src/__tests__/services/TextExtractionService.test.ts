@@ -1,5 +1,5 @@
-import { EpubTextExtractionService, ITextExtractionService } from '../../lib/services/TextExtractionService';
-import { TextChunk } from '@/preferences/types';
+import { EpubTextExtractionService, ITextExtractionService } from '@/lib/services/TextExtractionService';
+import { TextChunk, WindowWithThorium, WindowWithReadium } from '@/preferences/types';
 import { IFRAME_SELECTORS } from '@/preferences/constants';
 
 // Mock errorUtils to avoid actual error handling
@@ -70,7 +70,7 @@ describe('EpubTextExtractionService - SOLID Architecture Tests', () => {
     test('service focuses solely on text extraction responsibility', () => {
       const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(service));
       const publicMethods = methods.filter(method =>
-        method !== 'constructor' && !method.startsWith('_') && typeof (service as any)[method] === 'function'
+        method !== 'constructor' && !method.startsWith('_') && typeof (service as unknown as Record<string, unknown>)[method] === 'function'
       );
 
       expect(publicMethods).toContain('extractTextChunks');
@@ -423,32 +423,32 @@ describe('EpubTextExtractionService - SOLID Architecture Tests', () => {
 
     test('thorium navigation API availability', async () => {
       // Mock thorium API
-      (window as any).thorium = {
+      (window as WindowWithThorium).thorium = {
         reader: {
           nextPage: jest.fn().mockResolvedValue(true)
         }
       };
 
       await service.navigateToNextPage();
-      expect((window as any).thorium.reader.nextPage).toHaveBeenCalled();
+      expect((window as WindowWithThorium).thorium!.reader.nextPage).toHaveBeenCalled();
 
       // Cleanup
-      delete (window as any).thorium;
+      delete (window as WindowWithThorium).thorium;
     });
 
     test('readium navigation API availability', async () => {
       // Mock readium API
-      (window as any).readium = {
+      (window as WindowWithReadium).readium = {
         navigator: {
           next: jest.fn().mockResolvedValue(true)
         }
       };
 
       await service.navigateToNextPage();
-      expect((window as any).readium.navigator.next).toHaveBeenCalled();
+      expect((window as WindowWithReadium).readium!.navigator.next).toHaveBeenCalled();
 
       // Cleanup
-      delete (window as any).readium;
+      delete (window as WindowWithReadium).readium;
     });
 
     test('empty text content handling', async () => {

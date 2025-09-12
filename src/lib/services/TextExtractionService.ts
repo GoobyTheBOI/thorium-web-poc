@@ -1,5 +1,5 @@
 import { IFRAME_SELECTORS } from '@/preferences/constants';
-import { TextChunk } from '@/preferences/types';
+import { TextChunk, WindowWithNavigationAPIs } from '@/preferences/types';
 import { handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export interface ITextExtractionService {
@@ -517,8 +517,7 @@ export class EpubTextExtractionService implements ITextExtractionService {
      */
     private async tryThoriumNavigation(): Promise<boolean> {
         try {
-            // Look for Thorium's navigation API
-            const win = window as any;
+            const win = window as WindowWithNavigationAPIs;
 
             // Try common Thorium navigation methods
             if (win.thorium?.reader?.nextPage) {
