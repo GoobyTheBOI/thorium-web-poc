@@ -1,7 +1,7 @@
 import { createMocks } from 'node-mocks-http';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import handler from '@/pages/api/tts/azure';
-import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
+import { TTSErrorResponse, TTSRequestBody } from '@/preferences/types';
 import { TEST_CONFIG } from '../../../../lib/constants/testConstants';
 
 // Mock Azure Speech SDK

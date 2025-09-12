@@ -1,5 +1,6 @@
-import { TextChunk, IFRAME_SELECTORS } from '@/types/tts';
-import { extractErrorMessage, createError, handleDevelopmentError } from '@/lib/utils/errorUtils';
+import { IFRAME_SELECTORS } from '@/preferences/constants';
+import { TextChunk } from '@/preferences/types';
+import { handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export interface ITextExtractionService {
     extractTextChunks(): Promise<TextChunk[]>;
@@ -282,7 +283,7 @@ export class EpubTextExtractionService implements ITextExtractionService {
         try {
             const readerIframe = document.querySelector('iframe[title="Readium"]') as HTMLIFrameElement;
 
-            if (readerIframe && readerIframe.contentDocument) {
+            if (readerIframe?.contentDocument) {
                 // Try to get text from currently visible elements first
                 const visibleText = this.extractVisibleText(readerIframe.contentDocument.body);
 
@@ -301,7 +302,7 @@ export class EpubTextExtractionService implements ITextExtractionService {
             }
 
             const selection = window.getSelection();
-            if (selection && selection.toString().trim()) {
+            if (selection?.toString().trim()) {
                 return selection.toString().trim();
             }
 
@@ -507,8 +508,8 @@ export class EpubTextExtractionService implements ITextExtractionService {
 
             // Try postMessage to iframe
             const iframe = document.querySelector('iframe[title="Readium"]') as HTMLIFrameElement;
-            if (iframe && iframe.contentWindow) {
-                iframe.contentWindow.postMessage({ action: 'nextPage' }, '*');
+            if (iframe?.contentWindow) {
+                iframe.contentWindow.postMessage({ action: 'nextPage' }, window.location.origin);
                 await new Promise(resolve => setTimeout(resolve, 500));
                 return true;
             }

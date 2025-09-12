@@ -43,6 +43,7 @@
     font-size: 14px;
     margin: 0;
     font-weight: 500;
+    transition: color 0.2s ease;
 }
 
 /* Adapter Selection */
@@ -183,12 +184,6 @@
     align-items: center;
     gap: 8px;
     flex-grow: 1;
-}
-
-.statusText {
-    font-size: 14px;
-    font-weight: 500;
-    transition: color 0.2s ease;
 }
 
 .statusText.enabled {

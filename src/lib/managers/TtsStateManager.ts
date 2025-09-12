@@ -21,7 +21,7 @@ export class TtsStateManager {
         isEnabled: true
     };
 
-    private listeners: TtsStateListener[] = [];
+    private readonly listeners: TtsStateListener[] = [];
 
     getState(): TtsState {
         return { ...this.state };
@@ -68,23 +68,27 @@ export class TtsStateManager {
         this.setState({ currentAdapter: adapter });
     }
 
-    setEnabled(isEnabled: boolean): void {
-        if (!isEnabled) {
-            // When disabling TTS, stop any current playback
-            this.setState({
-                isEnabled,
-                isPlaying: false,
-                isPaused: false,
-                isGenerating: false,
-                error: null
-            });
-        } else {
-            this.setState({ isEnabled });
-        }
+    enableTts(): void {
+        this.setState({ isEnabled: true });
+    }
+
+    disableTts(): void {
+        // When disabling TTS, stop any current playback and clear state
+        this.setState({
+            isEnabled: false,
+            isPlaying: false,
+            isPaused: false,
+            isGenerating: false,
+            error: null
+        });
     }
 
     toggleEnabled(): void {
-        this.setEnabled(!this.state.isEnabled);
+        if (this.state.isEnabled) {
+            this.disableTts();
+        } else {
+            this.enableTts();
+        }
     }
 
     reset(): void {

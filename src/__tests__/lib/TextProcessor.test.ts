@@ -1,5 +1,5 @@
 import { DefaultTextProcessor, ElevenLabsTextProcessor } from '../../lib/TextProcessor';
-import { TTS_CONSTANTS } from '../../types/tts';
+import { TTS_CONSTANTS } from '@/preferences/constants';
 import { TEST_CONFIG } from '../../lib/constants/testConstants';
 
 describe('DefaultTextProcessor - SOLID Architecture', () => {
@@ -287,11 +287,12 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
       const text = TEST_CONFIG.TEST_DATA.SAMPLE_TEXT;
       const invalidTypes = [null, undefined, 123, {}, []];
 
-      invalidTypes.forEach(elementType => {
+      // Test each invalid type without deep nesting
+      for (const elementType of invalidTypes) {
         expect(() => processor.formatText(text, elementType as unknown)).not.toThrow();
         const result = processor.formatText(text, elementType as unknown);
         expect(result).toBe(TEST_CONFIG.TEST_DATA.SAMPLE_TEXT); // Should default to normal
-      });
+      }
     });
 
     test('handles very long text efficiently', () => {
@@ -401,13 +402,17 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
     test('handles concurrent access safely', async () => {
       const text = 'Concurrent access test';
 
-      const promises = Array.from({ length: 10 }, (_, i) =>
-        Promise.resolve().then(() => {
-          const formatted = processor.formatText(`${text} ${i}`, 'normal');
-          const valid = processor.validateText(`${text} ${i}`);
-          return { formatted, valid };
-        })
-      );
+      // Helper function to process concurrent test data
+      const processTestData = (i: number) => {
+        const formatted = processor.formatText(`${text} ${i}`, 'normal');
+        const valid = processor.validateText(`${text} ${i}`);
+        return { formatted, valid };
+      };
+
+      // Create async test function without Promise.resolve().then() nesting
+      const createTestPromise = async (i: number) => processTestData(i);
+
+      const promises = Array.from({ length: 10 }, (_, i) => createTestPromise(i));
 
       const results = await Promise.all(promises);
 
@@ -595,12 +600,13 @@ describe('ElevenLabsTextProcessor - SOLID Architecture', () => {
     test('validateText returns true for valid text', () => {
       expect(processor.validateText('Valid text')).toBe(true);
       expect(processor.validateText('Short')).toBe(true);
-      expect(processor.validateText('A')).toBe(true);
+      expect(processor.validateText('AB')).toBe(true); // ElevenLabs requires at least 2 characters
     });
 
     test('validateText returns false for invalid text', () => {
       expect(processor.validateText('')).toBe(false);
       expect(processor.validateText('   ')).toBe(false);
+      expect(processor.validateText('A')).toBe(false); // ElevenLabs requires at least 2 characters
       expect(processor.validateText(null as any)).toBe(false);
       expect(processor.validateText(undefined as any)).toBe(false);
     });

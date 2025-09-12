@@ -62,14 +62,17 @@ export const TtsStatusDisplay: React.FC<TtsStatusDisplayProps> = ({
         <h4 className={styles.shortcutsTitle}>
           Keyboard Shortcuts:
         </h4>
-        {keyboardShortcuts.map((shortcut, index) => (
-          <div key={index} className={styles.shortcutItem}>
-            <span>{shortcut.description}:</span>
-            <code className={styles.shortcutCode}>
-              {formatShortcut(shortcut)}
-            </code>
-          </div>
-        ))}
+        {keyboardShortcuts.map((shortcut) => {
+          const keyId = `${shortcut.ctrlKey ? 'ctrl+' : ''}${shortcut.altKey ? 'alt+' : ''}${shortcut.shiftKey ? 'shift+' : ''}${shortcut.key}`;
+          return (
+            <div key={keyId} className={styles.shortcutItem}>
+              <span>{shortcut.description}:</span>
+              <code className={styles.shortcutCode}>
+                {formatShortcut(shortcut)}
+              </code>
+            </div>
+          );
+        })}
       </div>
     </>
   );

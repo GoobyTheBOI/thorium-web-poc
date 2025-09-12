@@ -1,7 +1,8 @@
 import { createMocks } from 'node-mocks-http';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import handler from '../../../../pages/api/tts/elevenlabs';
-import { TTSErrorResponse, TTSRequestBody, TTS_CONSTANTS } from '../../../../types/tts';
+import { TTSErrorResponse, TTSRequestBody } from '@/preferences/types';
+import { TTS_CONSTANTS } from '@/preferences/constants';
 
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
   ElevenLabsClient: jest.fn(),
@@ -652,6 +653,16 @@ describe('/api/tts/elevenlabs', () => {
   });
 
   describe('Environment and Configuration Management', () => {
+    // Helper function to reduce nesting
+    const setConfigEnvironment = (config: Record<string, string | undefined>) => {
+      Object.keys(config).forEach(key => {
+        const value = config[key as keyof typeof config];
+        if (value !== undefined) {
+          process.env[key] = value;
+        }
+      });
+    };
+
     test('follows environment-first configuration pattern', () => {
       const configs = [
         { ELEVENLABS_API_KEY: 'key1' },
@@ -660,10 +671,7 @@ describe('/api/tts/elevenlabs', () => {
       ];
 
       configs.forEach(config => {
-        Object.keys(config).forEach(key => {
-          process.env[key] = config[key as keyof typeof config];
-        });
-
+        setConfigEnvironment(config);
         expect(process.env.ELEVENLABS_API_KEY).toBeDefined();
       });
     });

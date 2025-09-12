@@ -31,7 +31,6 @@ export function createTTSServices(adapterType: AdapterType, callbacks?: TTSFacto
         adapter,
         textExtractionService,
         stateManager,
-        voiceManagementService,
         adapterType,
         callbacks
     );

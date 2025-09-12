@@ -13,7 +13,7 @@ jest.mock('@/lib/services/TextExtractionService');
 describe('Voice and Orchestration Integration', () => {
   let voiceService: VoiceManagementService;
   let orchestrationService: TtsOrchestrationService;
-  let mockAdapter: jest.Mocked<IPlaybackAdapter>;
+  let mockAdapter: any;
 
   beforeEach(() => {
     // Create event listeners storage for the mock adapter
@@ -21,13 +21,13 @@ describe('Voice and Orchestration Integration', () => {
 
     // Create mock adapter
     mockAdapter = {
-      play: jest.fn(),
-      pause: jest.fn(),
-      stop: jest.fn(),
-      resume: jest.fn(),
-      destroy: jest.fn(),
-      getIsPlaying: jest.fn().mockReturnValue(false),
-      getIsPaused: jest.fn().mockReturnValue(false),
+      processTextChunk: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+      play: jest.fn().mockResolvedValue({}),
+      pause: jest.fn().mockResolvedValue({}),
+      playTextChunk: jest.fn().mockResolvedValue({}),
+      startPlayback: jest.fn(),
+      stopPlayback: jest.fn(),
+      isPlaying: false,
       on: jest.fn((event: 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback: (info: unknown) => void) => {
         if (!eventListeners[event]) {
           eventListeners[event] = [];
@@ -40,35 +40,7 @@ describe('Voice and Orchestration Integration', () => {
         setVoice: jest.fn(),
         getCurrentVoice: jest.fn(),
       },
-    } as jest.Mocked<IPlaybackAdapter>;
-
-    // Configure play method to emit 'play' event
-    mockAdapter.play.mockImplementation(async (input) => {
-      if (eventListeners['play']) {
-        eventListeners['play'].forEach(listener => listener({}));
-      }
-    });
-
-    // Configure pause method to emit 'pause' event
-    mockAdapter.pause.mockImplementation(() => {
-      if (eventListeners['pause']) {
-        eventListeners['pause'].forEach(listener => listener({}));
-      }
-    });
-
-    // Configure resume method to emit 'resume' event
-    mockAdapter.resume.mockImplementation(() => {
-      if (eventListeners['resume']) {
-        eventListeners['resume'].forEach(listener => listener({}));
-      }
-    });
-
-    // Configure stop method to emit 'stop' event
-    mockAdapter.stop.mockImplementation(() => {
-      if (eventListeners['stop']) {
-        eventListeners['stop'].forEach(listener => listener({}));
-      }
-    });
+    };
 
     (createAdapter as jest.MockedFunction<typeof createAdapter>).mockReturnValue(mockAdapter);
 
@@ -86,7 +58,6 @@ describe('Voice and Orchestration Integration', () => {
       mockAdapter,
       textService,
       stateManager,
-      voiceService,
       'elevenlabs'
     );
   });
@@ -98,7 +69,7 @@ describe('Voice and Orchestration Integration', () => {
     // When: TTS starts reading
     await orchestrationService.startReading();
 
-    // Then: Voice selection is maintained and playback begins
+        // Then: Voice is selected and adapter play is called
     expect(voiceService.getSelectedVoice()).toBe('test-voice-id');
     expect(mockAdapter.play).toHaveBeenCalled();
   });

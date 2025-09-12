@@ -4,11 +4,11 @@ import { INTERACTION_CONSTANTS } from '../constants/uiConstants';
 import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export class TtsKeyboardHandler {
-    private keyboardHandler: KeyboardHandler;
-    private orchestrationService: ITtsOrchestrationService;
+    private readonly keyboardHandler: KeyboardHandler;
+    private readonly orchestrationService: ITtsOrchestrationService;
     private lastStartTime: number = 0;
     private readonly START_THROTTLE_MS = INTERACTION_CONSTANTS.THROTTLE.TTS_START_MS;
-    private onToggle?: () => void;
+    private readonly onToggle?: () => void;
 
     constructor(orchestrationService: ITtsOrchestrationService, onToggle?: () => void) {
         this.keyboardHandler = new KeyboardHandler();

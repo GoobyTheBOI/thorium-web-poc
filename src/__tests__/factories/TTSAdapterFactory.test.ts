@@ -128,12 +128,19 @@ describe('AdapterFactory - SOLID Architecture', () => {
   });
 
   describe('Type Safety', () => {
+    // Helper function to test valid adapter type creation
+    const testValidAdapterCreation = (type: AdapterType) => {
+      createAdapter(type, mockVoiceService);
+    };
+
+    // Helper function to test each valid type without deep nesting
+    const testValidType = (type: AdapterType) => {
+      expect(() => testValidAdapterCreation(type)).not.toThrow();
+    };
+
     test('AdapterType union restricts to valid types', () => {
       const validTypes: AdapterType[] = ['elevenlabs', 'azure'];
-
-      validTypes.forEach(type => {
-        expect(() => createAdapter(type, mockVoiceService)).not.toThrow();
-      });
+      validTypes.forEach(testValidType);
     });
 
     test('adapter creation is type-safe', () => {
@@ -243,10 +250,11 @@ describe('AdapterFactory - SOLID Architecture', () => {
     test('factory validates adapter types strictly', () => {
       const invalidTypes = ['', 'invalid', 'openai', 'google'];
 
-      invalidTypes.forEach(type => {
+      // Test each invalid type without deep nesting
+      for (const type of invalidTypes) {
         expect(() => createAdapter(type as AdapterType, mockVoiceService))
           .toThrow(`Unknown adapter type: ${type}`);
-      });
+      }
     });
   });
 

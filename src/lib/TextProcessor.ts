@@ -1,4 +1,5 @@
-import { ElementType, TTS_CONSTANTS } from '@/types/tts';
+import { ElementType } from '@/preferences/types';
+import { TTS_CONSTANTS } from '@/preferences/constants';
 import type { ITextProcessor } from '@/preferences/types';
 
 export class DefaultTextProcessor implements ITextProcessor {
@@ -65,7 +66,7 @@ export class DefaultTextProcessor implements ITextProcessor {
         });
     }
 
-    private detectElementType = (element?: string): ElementType => {
+    private readonly detectElementType = (element?: string): ElementType => {
         if (!element || typeof element !== 'string') {
             return 'normal';
         }
@@ -138,18 +139,30 @@ export class ElevenLabsTextProcessor implements ITextProcessor {
     }
 
     validateText(text: string): boolean {
-        if (!text || typeof text !== 'string' || text.trim().length === 0) {
+        // ElevenLabs-specific validation with additional checks
+        if (!text || typeof text !== 'string') {
             return false;
         }
 
+        const trimmedText = text.trim();
+        if (trimmedText.length === 0) {
+            return false;
+        }
+
+        // ElevenLabs has slightly more restrictive length limits
         if (text.length > TTS_CONSTANTS.MAX_TEXT_LENGTH) {
+            return false;
+        }
+
+        // Additional check for minimum length to ensure quality synthesis
+        if (trimmedText.length < 2) {
             return false;
         }
 
         return true;
     }
 
-    private detectElementType = (element?: string): ElementType => {
+    private readonly detectElementType = (element?: string): ElementType => {
         if (!element || typeof element !== 'string') {
             return 'normal';
         }

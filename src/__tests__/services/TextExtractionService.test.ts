@@ -1,5 +1,6 @@
 import { EpubTextExtractionService, ITextExtractionService } from '../../lib/services/TextExtractionService';
-import { TextChunk, IFRAME_SELECTORS } from '../../types/tts';
+import { TextChunk } from '@/preferences/types';
+import { IFRAME_SELECTORS } from '@/preferences/constants';
 
 // Mock errorUtils to avoid actual error handling
 jest.mock('../../lib/utils/errorUtils', () => ({
@@ -352,7 +353,7 @@ describe('EpubTextExtractionService - SOLID Architecture Tests', () => {
 
       expect(mockPostMessage).toHaveBeenCalledWith(
         { action: 'nextPage' },
-        '*'
+        window.location.origin
       );
       expect(typeof result).toBe('boolean');
     }, 10000);
@@ -428,7 +429,7 @@ describe('EpubTextExtractionService - SOLID Architecture Tests', () => {
         }
       };
 
-      const result = await service.navigateToNextPage();
+      await service.navigateToNextPage();
       expect((window as any).thorium.reader.nextPage).toHaveBeenCalled();
 
       // Cleanup
@@ -443,7 +444,7 @@ describe('EpubTextExtractionService - SOLID Architecture Tests', () => {
         }
       };
 
-      const result = await service.navigateToNextPage();
+      await service.navigateToNextPage();
       expect((window as any).readium.navigator.next).toHaveBeenCalled();
 
       // Cleanup

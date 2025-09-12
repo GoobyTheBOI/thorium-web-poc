@@ -2,20 +2,18 @@ import { TtsOrchestrationService, ITtsOrchestrationService, TtsCallbacks } from 
 import { ITextExtractionService } from '@/lib/services/TextExtractionService';
 import { TtsStateManager, TtsState } from '@/lib/managers/TtsStateManager';
 import { createAdapter, AdapterType, AVAILABLE_ADAPTERS } from '@/lib/factories/AdapterFactory';
-import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 import { IPlaybackAdapter } from '@/preferences/types';
-import { TextChunk, TTS_CONSTANTS } from '@/types/tts';
+import { TextChunk } from '@/preferences/types';
+import { TTS_CONSTANTS } from '@/preferences/constants';
 
 jest.mock('@/lib/managers/TtsStateManager');
 jest.mock('@/lib/factories/AdapterFactory');
-jest.mock('@/lib/services/VoiceManagementService');
 
 describe('TtsOrchestrationService', () => {
   let service: ITtsOrchestrationService;
   let mockAdapter: jest.Mocked<IPlaybackAdapter>;
   let mockTextExtractor: jest.Mocked<ITextExtractionService>;
   let mockStateManager: jest.Mocked<TtsStateManager>;
-  let mockVoiceService: jest.Mocked<VoiceManagementService>;
   let mockCallbacks: TtsCallbacks;
 
   const createMockAdapter = (): jest.Mocked<IPlaybackAdapter> => ({
@@ -41,12 +39,6 @@ describe('TtsOrchestrationService', () => {
     hasNextPage: jest.fn().mockResolvedValue(false),
     navigateToNextPage: jest.fn().mockResolvedValue(false),
   });
-
-  const createMockVoiceService = (): jest.Mocked<VoiceManagementService> => ({
-    getVoices: jest.fn().mockResolvedValue([]),
-    setVoice: jest.fn(),
-    getSelectedVoice: jest.fn().mockReturnValue(null),
-  } as unknown as jest.Mocked<VoiceManagementService>);
 
   const createMockStateManager = (): jest.Mocked<TtsStateManager> => {
     const mockManager = {
@@ -79,7 +71,6 @@ describe('TtsOrchestrationService', () => {
     mockAdapter = createMockAdapter();
     mockTextExtractor = createMockTextExtractor();
     mockStateManager = createMockStateManager();
-    mockVoiceService = createMockVoiceService();
 
     mockCallbacks = {
       onStateChange: jest.fn(),
@@ -93,14 +84,10 @@ describe('TtsOrchestrationService', () => {
     // Mock createAdapter to return our mock adapter
     (createAdapter as jest.MockedFunction<typeof createAdapter>).mockReturnValue(mockAdapter);
 
-    // Mock VoiceManagementService constructor
-    (VoiceManagementService as jest.MockedClass<typeof VoiceManagementService>).mockImplementation(() => mockVoiceService);
-
     service = new TtsOrchestrationService(
       mockAdapter,
       mockTextExtractor,
       mockStateManager,
-      mockVoiceService,
       'elevenlabs',
       mockCallbacks,
       false

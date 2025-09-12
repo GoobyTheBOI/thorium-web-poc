@@ -15,18 +15,17 @@ describe('Core Service Integration', () => {
   let orchestrationService: TtsOrchestrationService;
   let textExtractionService: EpubTextExtractionService;
   let stateManager: TtsStateManager;
-  let mockAdapter: jest.Mocked<IPlaybackAdapter>;
+  let mockAdapter: any;
 
   beforeEach(() => {
     // Create mock adapter
     mockAdapter = {
-      play: jest.fn(),
-      pause: jest.fn(),
-      stop: jest.fn(),
-      resume: jest.fn(),
-      destroy: jest.fn(),
-      getIsPlaying: jest.fn().mockReturnValue(false),
-      getIsPaused: jest.fn().mockReturnValue(false),
+      processTextChunk: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+      play: jest.fn().mockResolvedValue({}),
+      playTextChunk: jest.fn().mockResolvedValue({}),
+      startPlayback: jest.fn(),
+      stopPlayback: jest.fn(),
+      isPlaying: false,
       on: jest.fn(),
       off: jest.fn(),
       voices: {
@@ -34,7 +33,7 @@ describe('Core Service Integration', () => {
         setVoice: jest.fn(),
         getCurrentVoice: jest.fn(),
       },
-    } as jest.Mocked<IPlaybackAdapter>;
+    } as any;
 
     (createAdapter as jest.MockedFunction<typeof createAdapter>).mockReturnValue(mockAdapter);
 
@@ -46,9 +45,13 @@ describe('Core Service Integration', () => {
       mockAdapter,
       textExtractionService,
       stateManager,
-      voiceService,
       'elevenlabs'
     );
+
+    // Mock text extraction to return sample text
+    jest.spyOn(textExtractionService, 'extractTextChunks').mockResolvedValue([
+      { text: 'Sample text for testing' }
+    ]);
   });
 
   it('should create and wire up all services correctly', () => {

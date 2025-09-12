@@ -1,5 +1,5 @@
 import { ITTSError } from '@/preferences/types';
-import { TextChunk } from '@/types/tts';
+import { TextChunk } from '@/preferences/types';
 import { createError } from './errorUtils';
 
 export interface AudioPlaybackResult<T> {
@@ -15,7 +15,7 @@ export interface AudioPlaybackAdapter {
 }
 
 export interface TextToAudioAdapter extends AudioPlaybackAdapter {
-    playTextChunk(textChunk: TextChunk): Promise<any>;
+    playTextChunk<T = unknown>(textChunk: TextChunk): Promise<T>;
 }
 
 /**
@@ -44,7 +44,10 @@ async function playPreGeneratedAudio<T>(
             audio.removeEventListener('error', onError);
             const ttsError = createError('PLAYBACK_FAILED', 'Audio playback failed', error);
             adapter.emitEvent('end', { success: false, error: ttsError });
-            reject(ttsError);
+
+            const errorObj = new Error(ttsError.message);
+            (errorObj as Error & { ttsError: ITTSError }).ttsError = ttsError;
+            reject(errorObj);
         };
 
         audio.addEventListener('ended', onEnd);

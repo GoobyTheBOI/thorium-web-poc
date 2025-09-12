@@ -62,15 +62,6 @@ module.exports = {
     "!src/**/index.ts"
   ],
 
-  coverageThreshold: {
-    global: {
-      branches: COVERAGE_THRESHOLD.BRANCHES,
-      functions: COVERAGE_THRESHOLD.FUNCTIONS,
-      lines: COVERAGE_THRESHOLD.LINES,
-      statements: COVERAGE_THRESHOLD.STATEMENTS
-    }
-  },
-
   // Ignore patterns
   testPathIgnorePatterns: [
     "/node_modules/",

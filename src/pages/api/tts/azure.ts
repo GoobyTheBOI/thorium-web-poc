@@ -1,4 +1,4 @@
-import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
+import { TTSErrorResponse, TTSRequestBody } from '@/preferences/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
     SpeechConfig,
@@ -133,18 +133,7 @@ function createSSML(text: string, voiceName: string): string {
         return text;
     }
 
-    // Check if text already contains SSML markup from TextProcessor
-    const hasSSMLMarkup = text.includes('<emphasis>') || text.includes('<prosody>') || text.includes('<break');
-
-    if (hasSSMLMarkup) {
-        // Text has SSML markup from TextProcessor, wrap it properly
-        return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-            <voice name='${voiceName}'>${text}</voice>
-        </speak>`;
-    } else {
-        // Plain text, wrap in basic SSML structure
-        return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-            <voice name='${voiceName}'>${text}</voice>
-        </speak>`;
-    }
+    return `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
+        <voice name='${voiceName}'>${text}</voice>
+    </speak>`;
 }

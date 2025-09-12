@@ -1,10 +1,9 @@
-import { TTS_CONSTANTS } from '@/types/tts';
+import { TTS_CONSTANTS } from '@/preferences/constants';
 import { IPlaybackAdapter } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 import { TtsStateManager, TtsState } from '../managers/TtsStateManager';
 import { createAdapter, AdapterType } from '../factories/AdapterFactory';
-import { VoiceManagementService } from './VoiceManagementService';
-import { TextChunk } from '@/types/tts';
+import { TextChunk } from '@/preferences/types';
 import { extractErrorMessage, createNetworkAwareError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 // Constants for TTS error detection
@@ -34,15 +33,14 @@ export interface ITtsOrchestrationService {
 export class TtsOrchestrationService implements ITtsOrchestrationService {
     private isExecuting: boolean = false;
     private isProcessingMultipleChunks: boolean = false;
-    private callbacks: TtsCallbacks;
-    private currentAdapterType: AdapterType | null = null;
+    private readonly callbacks: TtsCallbacks;
+    private readonly currentAdapterType: AdapterType | null = null;
     private useMockTTS: boolean = false;
 
     constructor(
-        private adapter: IPlaybackAdapter,
-        private textExtractor: ITextExtractionService,
-        private stateManager: TtsStateManager,
-        private voiceService: VoiceManagementService,
+        private readonly adapter: IPlaybackAdapter,
+        private readonly textExtractor: ITextExtractionService,
+        private readonly stateManager: TtsStateManager,
         initialAdapterType?: AdapterType,
         callbacks?: TtsCallbacks,
         useMockTTS?: boolean
@@ -171,7 +169,7 @@ export class TtsOrchestrationService implements ITtsOrchestrationService {
 
         while (attempts < maxAttempts) {
             const readerElement = this.textExtractor.getCurrentReaderElement();
-            if (readerElement && readerElement.textContent?.trim()) {
+            if (readerElement?.textContent?.trim()) {
                 return;
             }
 

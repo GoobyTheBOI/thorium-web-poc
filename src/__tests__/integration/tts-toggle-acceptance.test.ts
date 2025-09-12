@@ -59,7 +59,7 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
     it('should maintain isEnabled state in TtsState interface', () => {
       const stateManager = new TtsStateManager();
       const state = stateManager.getState();
-      
+
       // Verify isEnabled is part of the state
       expect(state.hasOwnProperty('isEnabled')).toBe(true);
       expect(typeof state.isEnabled).toBe('boolean');
@@ -68,14 +68,14 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
 
     it('should allow toggling enabled state through TtsStateManager', () => {
       const stateManager = new TtsStateManager();
-      
+
       // Initial state should be enabled
       expect(stateManager.getState().isEnabled).toBe(true);
-      
+
       // Toggle to disabled
       stateManager.toggleEnabled();
       expect(stateManager.getState().isEnabled).toBe(false);
-      
+
       // Toggle back to enabled
       stateManager.toggleEnabled();
       expect(stateManager.getState().isEnabled).toBe(true);
@@ -101,7 +101,7 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
 
       // When TTS is disabled, all audio states should be reset
       const disabledState = ttsReducer(playingState, toggleTts());
-      
+
       expect(disabledState.isEnabled).toBe(false);
       expect(disabledState.isPlaying).toBe(false);
       expect(disabledState.isPaused).toBe(false);
@@ -127,7 +127,7 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
 
       // When explicitly disabled, all audio states should be reset
       const disabledState = ttsReducer(pausedState, setIsEnabled(false));
-      
+
       expect(disabledState.isEnabled).toBe(false);
       expect(disabledState.isPlaying).toBe(false);
       expect(disabledState.isPaused).toBe(false);
@@ -137,17 +137,17 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
 
     it('should stop audio through TtsStateManager when disabled', () => {
       const stateManager = new TtsStateManager();
-      
+
       // Set up a playing state
       stateManager.setPlaying(true);
       stateManager.setGenerating(true);
-      
+
       expect(stateManager.getState().isPlaying).toBe(true);
       expect(stateManager.getState().isGenerating).toBe(true);
-      
+
       // Disable TTS - should stop all audio
-      stateManager.setEnabled(false);
-      
+      stateManager.disableTts();
+
       const state = stateManager.getState();
       expect(state.isEnabled).toBe(false);
       expect(state.isPlaying).toBe(false);
@@ -203,7 +203,7 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
 
       // When re-enabling, only isEnabled should change, other states should remain reset
       const enabledState = ttsReducer(disabledState, setIsEnabled(true));
-      
+
       expect(enabledState.isEnabled).toBe(true);
       expect(enabledState.isPlaying).toBe(false);
       expect(enabledState.isPaused).toBe(false);
@@ -213,20 +213,20 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
 
     it('should preserve TTS state across state manager operations', () => {
       const stateManager = new TtsStateManager();
-      
+
       // Disable TTS
-      stateManager.setEnabled(false);
+      stateManager.disableTts();
       expect(stateManager.getState().isEnabled).toBe(false);
-      
+
       // Other operations should not change enabled state
       stateManager.setError('Test error');
       expect(stateManager.getState().isEnabled).toBe(false);
-      
+
       stateManager.reset(); // This should NOT change isEnabled
       expect(stateManager.getState().isEnabled).toBe(false);
-      
+
       // Only explicit enable should change it
-      stateManager.setEnabled(true);
+      stateManager.enableTts();
       expect(stateManager.getState().isEnabled).toBe(true);
     });
   });
@@ -234,30 +234,30 @@ describe('TTS Toggle Functionality - Acceptance Criteria', () => {
   describe('Integration: Complete toggle workflow', () => {
     it('should handle complete enable/disable cycle correctly', () => {
       const stateManager = new TtsStateManager();
-      
+
       // Start with TTS enabled and audio playing
       stateManager.setPlaying(true);
       stateManager.setPaused(false);
       stateManager.setGenerating(true);
-      
+
       let state = stateManager.getState();
       expect(state.isEnabled).toBe(true);
       expect(state.isPlaying).toBe(true);
       expect(state.isGenerating).toBe(true);
-      
+
       // Disable TTS - should immediately stop all audio
       stateManager.toggleEnabled();
-      
+
       state = stateManager.getState();
       expect(state.isEnabled).toBe(false);
       expect(state.isPlaying).toBe(false);
       expect(state.isPaused).toBe(false);
       expect(state.isGenerating).toBe(false);
       expect(state.error).toBe(null);
-      
+
       // Re-enable TTS - should be ready but not automatically start playing
       stateManager.toggleEnabled();
-      
+
       state = stateManager.getState();
       expect(state.isEnabled).toBe(true);
       expect(state.isPlaying).toBe(false);

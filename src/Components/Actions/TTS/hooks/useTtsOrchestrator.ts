@@ -67,7 +67,7 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
   }, [dispatch]);
 
   // Create a ref to hold the changeAdapter function
-  const changeAdapterRef = useRef<((adapterType: AdapterType) => void) | null>(null);
+  const changeAdapterRef = useRef<((adapterType: AdapterType) => Promise<void>) | null>(null);
 
   const handleAdapterSwitch = useCallback((adapterType: AdapterType) => {
     if (changeAdapterRef.current) {

@@ -1,5 +1,5 @@
 import { VoiceInfo } from '@/preferences/types';
-import { TextChunk } from '@/types/tts';
+import { TextChunk } from '@/preferences/types';
 
 /**
  * Interface Segregation - Kleinere, specifieke interfaces

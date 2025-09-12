@@ -10,7 +10,7 @@ export interface KeyboardShortcut {
 }
 
 export class KeyboardHandler {
-    private shortcuts: Map<string, KeyboardShortcut> = new Map();
+    private readonly shortcuts: Map<string, KeyboardShortcut> = new Map();
     private boundHandler: ((event: KeyboardEvent) => void) | null = null;
     private enabled: boolean = true;
 

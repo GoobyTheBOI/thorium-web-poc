@@ -1,5 +1,5 @@
 import { playUniversal, AudioPlaybackAdapter, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
-import { TextChunk } from '@/types/tts';
+import { TextChunk } from '@/preferences/types';
 import { createError } from '@/lib/utils/errorUtils';
 
 // Mock dependencies
@@ -38,6 +38,24 @@ describe('audioPlaybackUtils', () => {
     };
   });
 
+  // Helper function to simulate successful audio ending
+  const simulateAudioSuccess = (audio: any) => {
+    setTimeout(() => {
+      const endListener = (audio.addEventListener as jest.Mock).mock.calls
+        .find(call => call[0] === 'ended')?.[1];
+      if (endListener) endListener();
+    }, 0);
+  };
+
+  // Helper function to simulate audio error
+  const simulateAudioError = (audio: any, error: Error) => {
+    setTimeout(() => {
+      const errorListener = (audio.addEventListener as jest.Mock).mock.calls
+        .find(call => call[0] === 'error')?.[1];
+      if (errorListener) errorListener(error);
+    }, 0);
+  };
+
   describe('playUniversal', () => {
     it('should handle Blob input by playing pre-generated audio', async () => {
       const blob = new Blob(['audio data'], { type: 'audio/wav' });
@@ -46,12 +64,7 @@ describe('audioPlaybackUtils', () => {
       // Mock successful audio playback
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
-        // Simulate immediate success
-        setTimeout(() => {
-          const endListener = (audio.addEventListener as jest.Mock).mock.calls
-            .find(call => call[0] === 'ended')?.[1];
-          if (endListener) endListener();
-        }, 0);
+        simulateAudioSuccess(audio);
         return audio;
       });
 
@@ -83,12 +96,7 @@ describe('audioPlaybackUtils', () => {
       // Mock setupAudioPlayback to simulate error
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
-        // Simulate error event
-        setTimeout(() => {
-          const errorListener = (audio.addEventListener as jest.Mock).mock.calls
-            .find(call => call[0] === 'error')?.[1];
-          if (errorListener) errorListener(mockError);
-        }, 0);
+        simulateAudioError(audio, mockError);
         return audio;
       });
 
@@ -98,11 +106,7 @@ describe('audioPlaybackUtils', () => {
         details: mockError
       });
 
-      await expect(playUniversal(mockAdapter, blob, successResult)).rejects.toEqual({
-        code: 'PLAYBACK_FAILED',
-        message: 'Audio playback failed',
-        details: mockError
-      });
+      await expect(playUniversal(mockAdapter, blob, successResult)).rejects.toThrow('Audio playback failed');
 
       expect(mockAdapter.cleanup).toHaveBeenCalled();
       expect(mockAdapter.setupAudioPlayback).toHaveBeenCalledWith(blob);
@@ -123,11 +127,7 @@ describe('audioPlaybackUtils', () => {
 
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
-        setTimeout(() => {
-          const endListener = (audio.addEventListener as jest.Mock).mock.calls
-            .find(call => call[0] === 'ended')?.[1];
-          if (endListener) endListener();
-        }, 0);
+        simulateAudioSuccess(audio);
         return audio;
       });
 
@@ -144,11 +144,7 @@ describe('audioPlaybackUtils', () => {
 
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
-        setTimeout(() => {
-          const errorListener = (audio.addEventListener as jest.Mock).mock.calls
-            .find(call => call[0] === 'error')?.[1];
-          if (errorListener) errorListener(mockError);
-        }, 0);
+        simulateAudioError(audio, mockError);
         return audio;
       });
 

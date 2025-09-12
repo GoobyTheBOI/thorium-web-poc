@@ -1,5 +1,6 @@
 import React, { SelectHTMLAttributes, ReactNode } from 'react';
 import styles from './Select.module.css';
+import { randomUUID } from 'crypto';
 
 export interface SelectOption {
     value: string;
@@ -51,7 +52,9 @@ export const Select: React.FC<SelectProps> = ({
         onChange?.(event.target.value);
     };
 
-    const selectId = rest.id || `select-${Math.random().toString(36).substr(2, 9)}`;
+    const selectId = rest.id || `select-${
+       randomUUID()
+    }`;
 
     const selectClasses = [
         styles.select,
@@ -68,10 +71,10 @@ export const Select: React.FC<SelectProps> = ({
             return children;
         }
 
-        return options.map((item, index) => {
+        return options.map((item) => {
             if (isOptGroup(item)) {
                 return (
-                    <optgroup key={`group-${index}`} label={item.label}>
+                    <optgroup key={`group-${item.label}`} label={item.label}>
                         {item.options.map((option) => (
                             <option
                                 key={option.value}

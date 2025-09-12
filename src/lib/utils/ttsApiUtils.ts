@@ -1,4 +1,4 @@
-import { TTSErrorResponse, TTSRequestBody } from '@/types/tts';
+import { TTSErrorResponse, TTSRequestBody } from '@/preferences/types';
 import type { NextApiResponse } from 'next';
 
 export interface BaseRequestData {

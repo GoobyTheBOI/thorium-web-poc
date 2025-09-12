@@ -6,7 +6,7 @@ import type {
     IVoiceProvider,
     VoiceInfo
 } from '@/preferences/types';
-import { TextChunk } from '@/types/tts';
+import { TextChunk } from '@/preferences/types';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
 import { extractErrorMessage, createNetworkAwareError, createError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 import { playUniversal, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
@@ -23,7 +23,7 @@ interface PlayResult {
 }
 
 export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
-    private config: IAdapterConfig = {
+    private readonly config: IAdapterConfig = {
         apiKey: process.env.ELEVENLABS_API_KEY || '',
         voiceId: 'EXAVITQu4vr4xnSDxMaL',
         modelId: 'eleven_multilingual_v2'

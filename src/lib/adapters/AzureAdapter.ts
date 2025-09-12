@@ -6,7 +6,7 @@ import {
     IVoiceProvider,
     VoiceInfo
 } from "@/preferences/types";
-import { TextChunk } from "@/types/tts";
+import { TextChunk } from "@/preferences/types";
 import { VoiceManagementService } from "@/lib/services/VoiceManagementService";
 import { extractErrorMessage, createNetworkAwareError, createError, handleDevelopmentError } from "@/lib/utils/errorUtils";
 import { playUniversal, TextToAudioAdapter } from "@/lib/utils/audioPlaybackUtils";
@@ -257,7 +257,7 @@ export class AzureAdapter implements IPlaybackAdapter, TextToAudioAdapter {
             this.currentAudio.load();
 
             // Revoke object URL to prevent memory leaks
-            if (currentSrc && currentSrc.startsWith('blob:')) {
+            if (currentSrc?.startsWith('blob:')) {
                 URL.revokeObjectURL(currentSrc);
             }
 

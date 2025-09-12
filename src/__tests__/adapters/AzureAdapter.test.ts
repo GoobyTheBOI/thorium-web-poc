@@ -29,6 +29,26 @@ describe('AzureAdapter', () => {
   let adapter: AzureAdapter;
   let mockTextProcessor: MockTextProcessor;
 
+  // Helper function to reduce nesting in mock implementations
+  const createMockAudioElement = () => {
+    const handleEvent = (event: string, handler: () => void) => {
+      if (event === 'ended') {
+        // Fire the ended event immediately to complete the promise
+        setTimeout(() => handler(), 0);
+      }
+    };
+
+    return {
+      play: jest.fn().mockResolvedValue(undefined),
+      pause: jest.fn(),
+      addEventListener: jest.fn().mockImplementation(handleEvent),
+      removeEventListener: jest.fn(),
+      src: '',
+      currentTime: 0,
+      duration: 0
+    };
+  };
+
   beforeEach(() => {
     mockTextProcessor = {
       formatText: jest.fn((text) => text),
@@ -105,20 +125,7 @@ describe('AzureAdapter', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       // Mock Audio element that fires ended event immediately
-      const mockAudio = {
-        play: jest.fn().mockResolvedValue(undefined),
-        pause: jest.fn(),
-        addEventListener: jest.fn().mockImplementation((event, handler) => {
-          if (event === 'ended') {
-            // Fire the ended event immediately to complete the promise
-            setTimeout(() => handler(), 0);
-          }
-        }),
-        removeEventListener: jest.fn(),
-        src: '',
-        currentTime: 0,
-        duration: 0
-      };
+      const mockAudio = createMockAudioElement();
       (global as unknown as { Audio: jest.Mock }).Audio = jest.fn(() => mockAudio);
 
       const result = await adapter.play(textChunk);
@@ -150,17 +157,7 @@ describe('AzureAdapter', () => {
         headers: { get: jest.fn().mockReturnValue('test-request-id') }
       });
 
-      const mockAudio = {
-        play: jest.fn().mockResolvedValue(undefined),
-        pause: jest.fn(),
-        addEventListener: jest.fn().mockImplementation((event, handler) => {
-          if (event === 'ended') {
-            // Fire the ended event immediately to complete the promise
-            setTimeout(() => handler(), 0);
-          }
-        }),
-        removeEventListener: jest.fn()
-      };
+      const mockAudio = createMockAudioElement();
       (global as unknown as { Audio: jest.Mock }).Audio = jest.fn(() => mockAudio);
 
       const textChunk = { text: TEST_CONFIG.TEST_DATA.SIMPLE_TEXT, element: 'paragraph', index: 0 };
@@ -287,14 +284,24 @@ describe('AzureAdapter', () => {
       expect(callback).toHaveBeenCalledWith(eventData);
     });
 
+    // Helper functions to test event support and avoid deep nesting
+    const testEventOn = (eventType: string, callback: jest.Mock) => {
+      adapter.on(eventType as 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback);
+    };
+
+    const testEventOff = (eventType: string, callback: jest.Mock) => {
+      adapter.off(eventType as 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback);
+    };
+
+    const testEventSupport = (eventType: string) => {
+      const callback = jest.fn();
+      expect(() => testEventOn(eventType, callback)).not.toThrow();
+      expect(() => testEventOff(eventType, callback)).not.toThrow();
+    };
+
     test('supports all required event types', () => {
       const events = ['wordBoundary', 'end', 'play', 'pause', 'resume', 'stop', 'error'];
-
-      events.forEach(event => {
-        const callback = jest.fn();
-        expect(() => adapter.on(event as 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback)).not.toThrow();
-        expect(() => adapter.off(event as 'wordBoundary' | 'end' | 'play' | 'pause' | 'resume' | 'stop' | 'error', callback)).not.toThrow();
-      });
+      events.forEach(testEventSupport);
     });
   });
 
