@@ -68,6 +68,5 @@ export async function playUniversal<T>(
         return await playPreGeneratedAudio(adapter, input, successResult);
     }
 
-    // Handle TextChunk input (generate and play)
     return await adapter.playTextChunk(input);
 }

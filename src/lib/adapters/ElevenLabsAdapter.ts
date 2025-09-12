@@ -1,9 +1,9 @@
 import type {
     IAdapterConfig,
     ITextProcessor,
-    IPlaybackAdapter,
     IVoiceProvider,
-    VoiceInfo
+    VoiceInfo,
+    IAudioPlayback
 } from '@/preferences/types';
 import { TextChunk } from '@/preferences/types';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
@@ -21,7 +21,7 @@ interface PlayResult {
     audio: HTMLAudioElement;
 }
 
-export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
+export class ElevenLabsAdapter implements IAudioPlayback, TextToAudioAdapter {
     private readonly config: IAdapterConfig = {
         apiKey: process.env.ELEVENLABS_API_KEY || '',
         voiceId: 'EXAVITQu4vr4xnSDxMaL',

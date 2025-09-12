@@ -25,9 +25,14 @@ export interface TtsPlaybackResult {
 }
 
 export interface IAudioPlayback {
-    startPlayback(data: ArrayBuffer): void;
-    stopPlayback(): void;
-    isPlaying: boolean;
+    play<T = void>(input: TextChunk | Blob): Promise<T>;
+    pause(): void;
+    resume(): void;
+    stop(): void;
+    destroy(): void;
+    getIsPlaying?(): boolean;
+    getIsPaused?(): boolean;
+    getCurrentAudio?(): HTMLAudioElement | null;
 }
 
 export interface IPlaybackAdapter {

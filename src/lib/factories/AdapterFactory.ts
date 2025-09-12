@@ -20,12 +20,10 @@ export const AVAILABLE_ADAPTERS: AdapterInfo[] = [
 export function createAdapter(type: AdapterType, voiceService: VoiceManagementService): IPlaybackAdapter {
     switch (type) {
         case 'elevenlabs': {
-            // Use ElevenLabs-specific text processor for better intonation
             const elevenLabsTextProcessor = new ElevenLabsTextProcessor();
             return new ElevenLabsAdapter(elevenLabsTextProcessor, voiceService);
         }
         case 'azure': {
-            // Use default SSML processor for Azure (supports SSML natively)
             const azureTextProcessor = new DefaultTextProcessor();
             return new AzureAdapter(azureTextProcessor, voiceService);
         }

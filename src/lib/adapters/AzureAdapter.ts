@@ -4,7 +4,8 @@ import {
     ITextProcessor,
     IVoiceProvider,
     VoiceInfo,
-    TextChunk
+    TextChunk,
+    IAudioPlayback
 } from "@/preferences/types";
 import { VoiceManagementService } from "@/lib/services/VoiceManagementService";
 import { createNetworkAwareError, createError, handleDevelopmentError } from "@/lib/utils/errorUtils";
@@ -21,7 +22,7 @@ interface PlayResult {
     audio: HTMLAudioElement;
 }
 
-export class AzureAdapter implements IPlaybackAdapter, TextToAudioAdapter {
+export class AzureAdapter implements IAudioPlayback, TextToAudioAdapter {
     private readonly config: IAdapterConfig = {
         apiKey: process.env.AZURE_API_KEY || '',
         voiceId: 'en-US-Adam:DragonHDLatestNeural',
@@ -33,7 +34,7 @@ export class AzureAdapter implements IPlaybackAdapter, TextToAudioAdapter {
 
     // Audio state management
     private currentAudio: HTMLAudioElement | null = null;
-    private isPlaying: boolean = false;
+    public isPlaying: boolean = false;
     private isPaused: boolean = false;
 
     public readonly voices: IVoiceProvider;
