@@ -1,6 +1,0 @@
-projectKey=GoobyTheBOI_thorium-web-poc_17da8af6-c5d1-4236-ad9b-899c78b25f99
-serverUrl=http://localhost:9000
-serverVersion=25.9.0.112764
-dashboardUrl=http://localhost:9000/dashboard?id=GoobyTheBOI_thorium-web-poc_17da8af6-c5d1-4236-ad9b-899c78b25f99
-ceTaskId=f8c294a3-70a4-41ff-829e-e371e9d1c790
-ceTaskUrl=http://localhost:9000/api/ce/task?id=f8c294a3-70a4-41ff-829e-e371e9d1c790

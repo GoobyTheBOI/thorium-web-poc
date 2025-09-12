@@ -1,10 +1,9 @@
 import { TTS_CONSTANTS } from '@/preferences/constants';
-import { IPlaybackAdapter } from '@/preferences/types';
+import { IPlaybackAdapter, TextChunk } from '@/preferences/types';
 import { ITextExtractionService } from './TextExtractionService';
 import { TtsStateManager, TtsState } from '../managers/TtsStateManager';
-import { createAdapter, AdapterType } from '../factories/AdapterFactory';
-import { TextChunk } from '@/preferences/types';
-import { extractErrorMessage, createNetworkAwareError, handleDevelopmentError } from '@/lib/utils/errorUtils';
+import { AdapterType } from '../factories/AdapterFactory';
+import { createNetworkAwareError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 // Constants for TTS error detection
 const TTS_ERROR_KEYWORDS = ['TTS', 'audio', 'speech', 'voice'];

@@ -3,7 +3,6 @@ import { TtsOrchestrationService } from '@/lib/services/TtsOrchestrationService'
 import { EpubTextExtractionService } from '@/lib/services/TextExtractionService';
 import { TtsStateManager } from '@/lib/managers/TtsStateManager';
 import { createAdapter } from '@/lib/factories/AdapterFactory';
-import { IPlaybackAdapter } from '@/preferences/types';
 
 jest.mock('@/lib/adapters/ElevenLabsAdapter');
 jest.mock('@/lib/adapters/AzureAdapter');
@@ -85,7 +84,7 @@ describe('Voice and Orchestration Integration', () => {
     expect(mockAdapter.play).toHaveBeenCalled();
 
     // Manually trigger the play event since our mock might not be working as expected
-    const onSpy = mockAdapter.on as jest.MockedFunction<typeof mockAdapter.on>;
+    const onSpy = mockAdapter.on;
     const playCallback = onSpy.mock.calls.find(call => call[0] === 'play')?.[1];
     if (playCallback) {
       playCallback({});

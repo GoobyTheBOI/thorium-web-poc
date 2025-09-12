@@ -1,5 +1,4 @@
-import { ITTSError } from '@/preferences/types';
-import { TextChunk } from '@/preferences/types';
+import { ITTSError, TextChunk } from '@/preferences/types';
 import { createError } from './errorUtils';
 
 export interface AudioPlaybackResult<T> {

@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.scannerwork/
+./.scannerwork
 
 # next.js
 /.next/

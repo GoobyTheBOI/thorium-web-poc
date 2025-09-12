@@ -3,7 +3,6 @@ import { TtsOrchestrationService } from '@/lib/services/TtsOrchestrationService'
 import { EpubTextExtractionService } from '@/lib/services/TextExtractionService';
 import { TtsStateManager } from '@/lib/managers/TtsStateManager';
 import { createAdapter } from '@/lib/factories/AdapterFactory';
-import { IPlaybackAdapter } from '@/preferences/types';
 
 // Mock external dependencies
 jest.mock('@/lib/adapters/ElevenLabsAdapter');

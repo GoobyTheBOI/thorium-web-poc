@@ -2,13 +2,12 @@ import {
     IAdapterConfig,
     IPlaybackAdapter,
     ITextProcessor,
-    ITTSError,
     IVoiceProvider,
-    VoiceInfo
+    VoiceInfo,
+    TextChunk
 } from "@/preferences/types";
-import { TextChunk } from "@/preferences/types";
 import { VoiceManagementService } from "@/lib/services/VoiceManagementService";
-import { extractErrorMessage, createNetworkAwareError, createError, handleDevelopmentError } from "@/lib/utils/errorUtils";
+import { createNetworkAwareError, createError, handleDevelopmentError } from "@/lib/utils/errorUtils";
 import { playUniversal, TextToAudioAdapter } from "@/lib/utils/audioPlaybackUtils";
 
 interface PlayRequestConfig {

@@ -656,7 +656,7 @@ describe('/api/tts/elevenlabs', () => {
     // Helper function to reduce nesting
     const setConfigEnvironment = (config: Record<string, string | undefined>) => {
       Object.keys(config).forEach(key => {
-        const value = config[key as keyof typeof config];
+        const value = config[key];
         if (value !== undefined) {
           process.env[key] = value;
         }
