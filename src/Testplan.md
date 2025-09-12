@@ -5,8 +5,8 @@
 | **Eigenschap** | **Waarde** |
 |----------------|------------|
 | **Auteur** | Luuk Lentjes |
-| **Datum** | 10 september 2025 |
-| **Versie** | 1.0 |
+| **Datum** | 12 september 2025 |
+| **Versie** | 1.1 |
 
 ---
 
@@ -36,10 +36,11 @@ Test de TTS-adapterstructuur actief om te verzekeren dat deze spraakondersteunin
 
 ### 2.1 In Scope
 
-- Functionele testen van use cases EU-01 t/m EU-07 (lezer)
+- Functionele testen van use cases EU-01 t/m EU-04 en EU-08 (lezer)
 - Use cases DEV-01 t/m DEV-02 (ontwikkelaar)
 - Voorlezen functionaliteit
 - Intonatie-aanpassingen
+- TTS toggle functionaliteit
 - Adapterintegratie
 
 ### 2.2 Out of Scope
@@ -62,9 +63,7 @@ Test de TTS-adapterstructuur actief om te verzekeren dat deze spraakondersteunin
 | EU-02 | Intonatie | Aangepaste intonatie voor vet/cursief |
 | EU-03 | Navigatie | Automatische paginanavigatie |
 | EU-04 | Bediening | Bediening via sneltoetsen |
-| EU-05 | Nadruk | Uniforme auditieve nadruk instellen |
-| EU-06 | Context | Contextafhankelijke nadruk |
-| EU-07 | Menu | Toegankelijk menu voor instellingen |
+| EU-08 | Toggle | TTS-functionaliteit aan/uit zetten |
 | DEV-01 | Integratie | Adapterintegratie voor TTS-diensten |
 | DEV-02 | Metadata | Toegang tot semantische metadata |
 
@@ -75,6 +74,9 @@ Test de TTS-adapterstructuur actief om te verzekeren dat deze spraakondersteunin
 | Externe TTS-service betrouwbaarheid | Afhankelijk van providers |
 | Prestatie onder hoge load | Buiten scope van dit testplan |
 | Beveiliging van API-keys | Onderdeel van infrastructuur-testing |
+| EU-05: Nadruk instellen | Niet geïmplementeerd in huidige versie |
+| EU-06: Context nadruk | Niet geïmplementeerd in huidige versie |
+| EU-07: Menu instellingen | Niet geïmplementeerd in huidige versie |
 
 ## 6. Aanpak
 
@@ -175,34 +177,15 @@ Deze test cases zijn gebaseerd op de use cases en user stories uit de Software G
 | TC-04c | Alternatief: Ongeldige sneltoets      | 1. Start voorlezen. 2. Druk ongeldige toets.                            | Systeem negeert en blijft voorlezen.                                               |
 | TC-04d | Uitzondering: Geen toetsenbord detectie | 1. Simuleer geen toetsenbord. 2. Probeer sneltoetsen.                 | Systeem meldt fout of valt terug op alternatieve bediening.                        |
 
-### EU-05: Uniforme en aanpasbare auditieve nadruk instellen
+### EU-08: TTS-functionaliteit aan en uit zetten
 
 | ID     | Beschrijving                          | Stappen                                                                 | Verwacht Resultaat                                                                 |
 |--------|---------------------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| TC-05a | Hoofdscenario: Nadruk instellen       | 1. Open ePub. 2. Ga naar instellingen. 3. Selecteer optie (bijv. standaard). 4. Start voorlezen. | Systeem slaat op, past toe op alle boeken en introduceert bij nieuw boek.          |
-| TC-05b | Alternatief: Nadruk uitschakelen      | 1. Volg hoofdscenario. 2. Zet nadruk uit.                              | Systeem leest in standaardstem zonder nadruk.                                      |
-| TC-05c | Alternatief: Introductie overslaan    | 1. Volg hoofdscenario. 2. Sla introductie over na eerste keer.         | Systeem schakelt introductie uit voor toekomstige boeken.                          |
-| TC-05d | Uitzondering: Instellingen niet opslaan | 1. Simuleer opslagfout. 2. Probeer instellen.                        | Systeem toont "Kan instellingen niet opslaan" en herstelt standaard.               |
-
-### EU-06: Contextafhankelijke auditieve nadruk toepassen
-
-| ID     | Beschrijving                          | Stappen                                                                 | Verwacht Resultaat                                                                 |
-|--------|---------------------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| TC-06a | Hoofdscenario: Genre-analyse          | 1. Open ePub met genre-metadata (bijv. roman). 2. Start voorlezen.     | Systeem analyseert, selecteert stijl (bijv. vet=zwaarder), kondigt aan en speelt af. |
-| TC-06b | Alternatief: Geen metadata            | 1. Open ePub zonder metadata. 2. Start voorlezen.                      | Systeem gebruikt standaardstijl en meldt dit.                                      |
-| TC-06c | Alternatief: Aankondiging uitschakelen| 1. Volg hoofdscenario. 2. Schakel aankondiging uit.                    | Systeem slaat voorkeur op en slaat over bij toekomstige boeken.                    |
-| TC-06d | Uitzondering: Metadata-analyse mislukt| 1. Simuleer analysefout. 2. Start voorlezen.                           | Systeem gebruikt standaardnadruk en vermeldt melding.                              |
-| TC-06e | Uitzondering: Stijl niet ondersteund  | 1. Gebruik TTS zonder stijl-ondersteuning. 2. Start voorlezen.         | Systeem valt terug op standaardstem en meldt "Beperkte stijlondersteuning".        |
-
-### EU-07: Toegankelijk menu voor nadrukinstellingen
-
-| ID     | Beschrijving                          | Stappen                                                                 | Verwacht Resultaat                                                                 |
-|--------|---------------------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| TC-07a | Hoofdscenario: Menu via sneltoets     | 1. Open ePub. 2. Activeer menu via sneltoets/spraak. 3. Selecteer optie. | Systeem presenteert opties, leest voor, bevestigt en past toe.                     |
-| TC-07b | Alternatief: Niet-ondersteunde invoer | 1. Volg hoofdscenario. 2. Gebruik niet-ondersteunde methode.           | Systeem schakelt naar standaard spraak/toetsenbord.                               |
-| TC-07c | Alternatief: Time-out menu            | 1. Open menu. 2. Wacht 30 seconden zonder keuze.                       | Systeem behoudt huidige instelling en sluit menu.                                  |
-| TC-07d | Uitzondering: Spraak niet beschikbaar | 1. Blokkeer spraak. 2. Open menu via spraak.                           | Systeem schakelt naar toetsenbord en meldt "Spraak niet beschikbaar".              |
-| TC-07e | Uitzondering: Menu niet laden         | 1. Simuleer laadfout menu. 2. Probeer openen.                          | Systeem meldt "Menu niet beschikbaar" en gebruikt standaardinstellingen.           |
+| TC-08a | Hoofdscenario: TTS uitschakelen      | 1. Open ePub. 2. Ga naar TTS-instellingen. 3. Schakel TTS uit. 4. Probeer voorlezen te starten. | Systeem toont TTS als uitgeschakeld, voorleesfunctie is niet beschikbaar.         |
+| TC-08b | Hoofdscenario: TTS inschakelen       | 1. Open ePub met TTS uitgeschakeld. 2. Ga naar TTS-instellingen. 3. Schakel TTS in. 4. Start voorlezen. | Systeem activeert TTS-functionaliteit, voorlezen werkt normaal.                   |
+| TC-08c | Alternatief: Toggle via sneltoets    | 1. Open ePub. 2. Druk toggle sneltoets (Shift+Q). 3. Controleer status. | Systeem wisselt TTS-status en toont visuele feedback van huidige staat.            |
+| TC-08d | Alternatief: Status persistentie     | 1. Schakel TTS uit. 2. Sluit en heropen applicatie. 3. Controleer TTS-status. | Systeem onthoudt laatste TTS-instelling en behoudt uitgeschakelde staat.          |
+| TC-08e | Uitzondering: Toggle tijdens afspelen| 1. Start voorlezen. 2. Druk toggle sneltoets tijdens afspelen.         | Systeem stopt huidige afspeling en schakelt TTS uit met bevestigingsmelding.       |
 
 ### DEV-01: Integreren met externe TTS-diensten via adapterarchitectuur
 

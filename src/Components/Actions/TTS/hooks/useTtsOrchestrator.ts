@@ -75,9 +75,14 @@ export function useTts({ onStateChange, onError }: UseTtsProps = {}) {
     }
   }, []);
 
+  const handleToggle = useCallback(() => {
+    dispatch(toggleTts());
+  }, [dispatch]);
+
   const { getServices, cleanup, getKeyboardShortcuts } = useServiceManager({
     onStateChange: stableStateChangeCallback,
     onAdapterSwitch: handleAdapterSwitch,
+    onToggle: handleToggle,
   });
 
   const { loadVoices, changeVoice } = useVoiceActions({

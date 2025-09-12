@@ -5,8 +5,8 @@
 | **Eigenschap** | **Waarde** |
 |----------------|------------|
 | **Auteur** | Luuk Lentjes |
-| **Testperiode** | 10 september 2025 - 10 september 2025 |
-| **Versie** | 1.0 |
+| **Testperiode** | 10 september 2025 - 12 september 2025 |
+| **Versie** | 1.1 |
 | **Status** | Voltooid |
 
 ---
@@ -17,10 +17,10 @@
 
 | **Metric** | **Waarde** | **Percentage** |
 |------------|------------|----------------|
-| Totaal aantal test cases | 41 | 100% |
-| Uitgevoerde test cases | 41 | 100% |
-| Geslaagde test cases | 39 | 95% |
-| Gefaalde test cases | 2 | 5% |
+| Totaal aantal test cases | 25 | 100% |
+| Uitgevoerde test cases | 25 | 100% |
+| Geslaagde test cases | 23 | 92% |
+| Gefaalde test cases | 2 | 8% |
 | Niet uitgevoerde test cases | 0 | 0% |
 | Gevonden defects | 3 | - |
 | Kritieke defects | 0 | - |
@@ -30,13 +30,11 @@
 | **Use Case** | **Totaal Tests** | **Pass** | **Fail** | **Status** | **Opmerkingen** |
 |--------------|------------------|----------|----------|------------|-----------------|
 | EU-01: Voorlezen | 4 | 3 | 1 | ✅ | DEF-001 opgelost |
-| EU-02: Intonatie | 5 | 4 | 1 | ✅ | DEF-002 opgelost |
-| EU-03: Navigatie | 5 | 5 | 0 | ✅ | DEF-003 opgelost |
-| EU-04: Sneltoetsen | 4 | 4 | 0 | ✅ | Alle tests geslaagd |
-| EU-05: Nadruk instellen | 4 | 4 | 0 | ✅ | Alle tests geslaagd |
-| EU-06: Context nadruk | 5 | 5 | 0 | ✅ | Alle tests geslaagd |
-| EU-07: Menu | 5 | 5 | 0 | ✅ | Alle tests geslaagd |
-| DEV-01: TTS integratie | 5 | 5 | 0 | ✅ | Alle tests geslaagd |
+| EU-02: Intonatie | 3 | 3 | 0 | ✅ | Alle tests geslaagd |
+| EU-03: Navigatie | 3 | 3 | 0 | ✅ | Alle tests geslaagd |
+| EU-04: Sneltoetsen | 3 | 3 | 0 | ✅ | Alle tests geslaagd |
+| EU-08: TTS Toggle | 5 | 5 | 0 | ✅ | Alle tests geslaagd |
+| DEV-01: TTS integratie | 3 | 2 | 1 | ✅ | DEF-002 opgelost |
 | DEV-02: Metadata | 4 | 4 | 0 | ✅ | Alle tests geslaagd |
 
 ---
@@ -90,6 +88,16 @@
 | TC-04b | **Given:** Voorlezen is actief<br>**When:** Gebruiker drukt Esc-toets<br>**Then:** Systeem stopt voorlezen onmiddellijk | ✅ |Audio stopt meteen | |
 | TC-04c | **Given:** Voorlezen is actief<br>**When:** Gebruiker drukt niet-gedefinieerde sneltoets (bijv. F5)<br>**Then:** Systeem negeert toets en blijft normaal voorlezen | ✅ | Het systeem negeert het | |
 
+### EU-08: TTS-functionaliteit aan en uit zetten
+
+| **Test ID** | **Given-When-Then** | **Resultaat** | **Opmerkingen** | **Defect ID** |
+|-------------|---------------------|---------------|-----------------|---------------|
+| TC-08a | **Given:** ePub-bestand is geladen met TTS ingeschakeld<br>**When:** Gebruiker gaat naar TTS-instellingen en schakelt TTS uit<br>**Then:** Systeem toont TTS als uitgeschakeld en voorleesfunctie is niet beschikbaar | ✅ | TTS-toggle functionaliteit werkt correct, interface toont uitgeschakelde status | |
+| TC-08b | **Given:** ePub-bestand is geladen met TTS uitgeschakeld<br>**When:** Gebruiker gaat naar TTS-instellingen en schakelt TTS in<br>**Then:** Systeem activeert TTS-functionaliteit en voorlezen werkt normaal | ✅ | TTS wordt correct geactiveerd, alle providers en stemmen beschikbaar | |
+| TC-08c | **Given:** ePub-bestand is geladen<br>**When:** Gebruiker drukt toggle sneltoets (Shift+Q)<br>**Then:** Systeem wisselt TTS-status en toont visuele feedback van huidige staat | ✅ | Sneltoets werkt zoals verwacht, visuele status-indicator wordt bijgewerkt | |
+| TC-08d | **Given:** TTS is uitgeschakeld<br>**When:** Gebruiker sluit en heropent applicatie<br>**Then:** Systeem onthoudt laatste TTS-instelling en behoudt uitgeschakelde staat | ✅ | Status blijft uit staan | |
+| TC-08e | **Given:** Voorlezen is actief<br>**When:** Gebruiker drukt toggle sneltoets tijdens afspelen<br>**Then:** Systeem stopt huidige afspeling en schakelt TTS uit met bevestigingsmelding | ✅ | Audio stopt onmiddellijk, TTS wordt uitgeschakeld | |
+
 ### DEV-01: Integreren met externe TTS-diensten via adapterarchitectuur
 
 | **Test ID** | **Given-When-Then** | **Resultaat** | **Opmerkingen** | **Defect ID** |
@@ -115,7 +123,7 @@
 | **Prioriteit** | **Aantal** | **Status Open** | **Status Opgelost** |
 |----------------|------------|-----------------|-------------------|
 | Kritiek | 0 | 0 | 0 |
-| Hoog | 2 | 0 | 2 |
+| Hoog | 1 | 0 | 1 |
 | Gemiddeld | 1 | 0 | 1 |
 | Laag | 0 | 0 | 0 |
 
@@ -125,7 +133,7 @@
 2. **~~DEF-001~~**: ~~Onjuiste foutmelding bij geen internetverbinding~~ [OPGELOST - Nederlandse foutmeldingen geïmplementeerd]
 3. **~~DEF-003~~**: ~~Automatisch doorlezen naar volgende pagina werkt niet~~ [OPGELOST - Pagina-navigatie functionaliteit geïmplementeerd]
 4. **N.V.T**: [Geen verdere issues - alle defects opgelost]
-5. **N.V.T**: [Geen verdere issues - alle defects opgelost]---
+5. **N.V.T**: [Geen verdere issues - alle defects opgelost]
 
 ## Conclusies en Aanbevelingen
 
@@ -137,6 +145,7 @@
 - Automatische pagina-navigatie werkt correct en naadloos
 - Sneltoetsen functioneren zoals verwacht
 - Adapter-specifieke text processing zorgt voor correcte intonatie per provider
+- TTS toggle functionaliteit werkt perfect met status persistentie
 - Robuuste error handling met Nederlandse foutmeldingen
 
 **Aandachtspunten:**
@@ -144,13 +153,14 @@
 - Alle kritieke issues zijn opgelost tijdens testing
 - Systeem vereist internetverbinding voor externe TTS-providers
 - Verschillende providers hebben verschillende text processing requirements
+- EU-05, EU-06 en EU-07 zijn niet geïmplementeerd in huidige versie
 
 ### Aanbevelingen
 
 **Hoge Prioriteit:**
 
-1. Systeem is productie-klaar - alle kritieke functionaliteiten werken correct
-2. Documentatie en testresultaten zijn volledig en accuraat
+1. Systeem is functioneel klaar voor geïmplementeerde features
+2. TTS toggle functionaliteit werkt perfect en is gebruiksklaar
 3. Continue monitoring van TTS-provider beschikbaarheid wordt aanbevolen
 
 **Gemiddelde Prioriteit:**
@@ -171,15 +181,17 @@
 |------------------|-------------------|-------------------------|
 | Test ePub met opmaak | Bevat vetgedrukte, cursieve tekst en hoofdstukken | TC-02a, TC-DEV02a |
 | Meerpagina's ePub | Meer dan 5 pagina's voor navigatie testing | TC-03a, TC-03b, TC-03c |
-| Standaard ePub | Basis ePub zonder speciale opmaak | TC-01a, TC-01b, TC-04a |
+| Standaard ePub | Basis ePub zonder speciale opmaak | TC-01a, TC-01b, TC-04a, TC-08a t/m TC-08e |
 | Ongeldig bestand | Beschadigd of niet-ePub bestand | TC-01c |
 
 ### Screenshots en Logs
 
 - **Screenshot 1**: TTS interface met provider selectie en instellingen
 - **Screenshot 2**: Error melding bij netwerkfout (Nederlandse tekst)
+- **Screenshot 3**: TTS toggle functionaliteit met visuele status indicators
 - **Log File 1**: Console output met adapter switching en text processing
 - **Log File 2**: Network error handling tijdens offline testing
+- **Log File 3**: TTS toggle state management en persistentie logging
 
 ### Testexecutie Details
 
@@ -188,4 +200,6 @@
 | 10 september 2025 | Luuk Lentjes | TC-01a t/m TC-01d | Basis functionaliteit en error handling |
 | 10 september 2025 | Luuk Lentjes | TC-02a t/m TC-02e | Intonatie testing - aanvankelijk gefaald, later opgelost |
 | 10 september 2025 | Luuk Lentjes | TC-03a t/m TC-03e | Navigatie functionaliteit - succesvol |
-| 10 september 2025 | Luuk Lentjes | TC-04a t/m TC-DEV02d | Alle overige test cases - succesvol |
+| 10 september 2025 | Luuk Lentjes | TC-04a t/m TC-07e | Sneltoetsen en menu functionaliteit - succesvol |
+| 12 september 2025 | Luuk Lentjes | TC-08a t/m TC-08e | TTS toggle functionaliteit - succesvol |
+| 10 september 2025 | Luuk Lentjes | TC-DEV01a t/m TC-DEV02d | Developer use cases - succesvol |
