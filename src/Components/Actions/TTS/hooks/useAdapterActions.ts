@@ -1,11 +1,11 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
-import { TtsReducerState } from '@/lib/ttsReducer';
 import {
   startAdapterSwitch,
   finishAdapterSwitch,
   adapterSwitchFailed,
-  setVoicesError
+  setVoicesError,
+  TtsReducerState
 } from '@/lib/ttsReducer';
 
 export interface UseAdapterActionsProps {

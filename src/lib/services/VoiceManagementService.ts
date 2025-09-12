@@ -1,6 +1,6 @@
 import { getVoices, IVoices } from "readium-speech";
 import { VoiceInfo } from "@/preferences/types";
-import { extractErrorMessage, createNetworkAwareError } from "@/lib/utils/errorUtils";
+import { createNetworkAwareError } from "@/lib/utils/errorUtils";
 
 export interface IVoiceManagementService {
     loadRediumVoices(): Promise<IVoices[]>;

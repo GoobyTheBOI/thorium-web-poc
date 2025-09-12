@@ -1,5 +1,4 @@
-import { TtsReducerState, toggleTts, setIsEnabled, setIsPlaying, setIsPaused, setIsGenerating } from '@/lib/ttsReducer';
-import ttsReducer from '@/lib/ttsReducer';
+import ttsReducer, { TtsReducerState, toggleTts, setIsEnabled, setIsPlaying, setIsPaused, setIsGenerating } from '@/lib/ttsReducer';
 import { TtsStateManager } from '@/lib/managers/TtsStateManager';
 
 describe('TTS Toggle Functionality - Acceptance Criteria', () => {

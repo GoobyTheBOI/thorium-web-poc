@@ -38,26 +38,58 @@ export class EpubTextExtractionService implements ITextExtractionService {
 
     getCurrentReaderElement(): HTMLElement | null {
         for (const selector of IFRAME_SELECTORS) {
-            const iframes = document.querySelectorAll(selector) as NodeListOf<HTMLIFrameElement>;
-
-            for (const iframe of iframes) {
-                try {
-                    const style = window.getComputedStyle(iframe);
-                    const isVisible = style.visibility !== 'hidden' &&
-                        style.display !== 'none' &&
-                        style.opacity !== '0';
-
-                    if (isVisible && iframe.contentDocument) {
-                        return iframe.contentDocument.body;
-                    }
-                } catch (error) {
-                    console.debug('Cannot access iframe:', error instanceof Error ? error.message : String(error));
-                    continue;
-                }
+            const element = this.findVisibleReaderIframe(selector);
+            if (element) {
+                return element;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Find a visible and accessible iframe for the given selector.
+     */
+    private findVisibleReaderIframe(selector: string): HTMLElement | null {
+        const iframes = document.querySelectorAll(selector);
+
+        for (const element of iframes) {
+            const readerElement = this.tryGetReaderElementFromIframe(element);
+            if (readerElement) {
+                return readerElement;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Try to get the reader element from an iframe if it's visible and accessible.
+     */
+    private tryGetReaderElementFromIframe(element: Element): HTMLElement | null {
+        if (!(element instanceof HTMLIFrameElement)) {
+            return null;
+        }
+
+        try {
+            if (this.isIframeVisible(element) && element.contentDocument) {
+                return element.contentDocument.body;
+            }
+        } catch (error) {
+            console.debug('Cannot access iframe:', error instanceof Error ? error.message : String(error));
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if an iframe is visible in the DOM.
+     */
+    private isIframeVisible(iframe: HTMLIFrameElement): boolean {
+        const style = window.getComputedStyle(iframe);
+        return style.visibility !== 'hidden' &&
+               style.display !== 'none' &&
+               style.opacity !== '0';
     }
 
     /**
@@ -105,7 +137,7 @@ export class EpubTextExtractionService implements ITextExtractionService {
             const text = node.textContent?.trim();
             if (this.isValidText(text)) {
                 chunks.push({
-                    text: text!,
+                    text: text,
                     element: node.parentElement?.tagName || undefined,
                 });
             }
@@ -139,10 +171,10 @@ export class EpubTextExtractionService implements ITextExtractionService {
             const text = node.textContent?.trim();
             if (this.isValidText(text)) {
                 chunks.push({
-                    text: text!,
+                    text: text,
                     element: node.parentElement?.tagName || undefined,
                 });
-                accumulatedLength += text!.length;
+                accumulatedLength += text.length;
 
                 if (accumulatedLength > EpubTextExtractionService.CHUNK_TEXT_LIMIT) {
                     break;
@@ -389,27 +421,20 @@ export class EpubTextExtractionService implements ITextExtractionService {
      * Navigate to the next page in the ePub.
      */
     async navigateToNextPage(): Promise<boolean> {
-        try {
-            // Method 1: Try clicking next button
-            const nextButton = this.findNextPageButton();
-            if (nextButton && await this.clickNextButton(nextButton)) {
-                return true;
-            }
-
-            // Method 2: Try keyboard navigation (Arrow Right)
-            if (await this.tryKeyboardNavigation()) {
-                return true;
-            }
-
-            // Method 3: Try Thorium-specific navigation
-            if (await this.tryThoriumNavigation()) {
-                return true;
-            }
-
-            return false;
-        } catch (error) {
-            return false;
+        const nextButton = this.findNextPageButton();
+        if (nextButton && await this.clickNextButton(nextButton)) {
+            return true;
         }
+
+        if (await this.tryKeyboardNavigation()) {
+            return true;
+        }
+
+        if (await this.tryThoriumNavigation()) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

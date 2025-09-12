@@ -122,7 +122,7 @@ describe('AdapterFactory - SOLID Architecture', () => {
       const validTypes: AdapterType[] = ['elevenlabs', 'azure'];
 
       AVAILABLE_ADAPTERS.forEach((option) => {
-        expect(validTypes).toContain(option.key as AdapterType);
+        expect(validTypes).toContain(option.key);
       });
     });
   });

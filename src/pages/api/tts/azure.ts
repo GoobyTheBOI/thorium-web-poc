@@ -1,4 +1,4 @@
-import { TTSErrorResponse, TTSRequestBody } from '@/preferences/types';
+import { TTSErrorResponse } from '@/preferences/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
     SpeechConfig,

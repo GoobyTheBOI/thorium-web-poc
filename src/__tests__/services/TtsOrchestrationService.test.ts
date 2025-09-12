@@ -1,7 +1,7 @@
 import { TtsOrchestrationService, ITtsOrchestrationService, TtsCallbacks } from '@/lib/services/TtsOrchestrationService';
 import { ITextExtractionService } from '@/lib/services/TextExtractionService';
 import { TtsStateManager, TtsState } from '@/lib/managers/TtsStateManager';
-import { createAdapter, AdapterType, AVAILABLE_ADAPTERS } from '@/lib/factories/AdapterFactory';
+import { createAdapter } from '@/lib/factories/AdapterFactory';
 import { IPlaybackAdapter, TextChunk } from '@/preferences/types';
 
 jest.mock('@/lib/managers/TtsStateManager');

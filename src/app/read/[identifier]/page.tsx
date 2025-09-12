@@ -15,7 +15,7 @@ type Props = {
   params: Promise<Params>;
 };
 
-export default function BookPage({ params }: Props) {
+export default function BookPage({ params }: Readonly<Props>) {
   const identifier = use(params).identifier;
   const isLoading = useAppSelector(state => state.reader.isLoading);
 

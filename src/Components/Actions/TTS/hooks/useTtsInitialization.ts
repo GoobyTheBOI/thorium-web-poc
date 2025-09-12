@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AdapterType, AVAILABLE_ADAPTERS } from '@/lib/factories/AdapterFactory';
 import { TTSServices } from '@/lib/factories/TTSServicesFactory';
-import { TtsReducerState } from '@/lib/ttsReducer';
 import {
   setAvailableAdapters,
   setIsPlaying,
@@ -9,7 +8,8 @@ import {
   setIsGenerating,
   setError,
   finishVoiceLoading,
-  voiceLoadingFailed
+  voiceLoadingFailed,
+  TtsReducerState
 } from '@/lib/ttsReducer';
 
 export interface UseTtsInitializationProps {

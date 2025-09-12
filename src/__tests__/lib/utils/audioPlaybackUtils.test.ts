@@ -1,4 +1,4 @@
-import { playUniversal, AudioPlaybackAdapter, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
+import { playUniversal, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
 import { TextChunk } from '@/preferences/types';
 import { createError } from '@/lib/utils/errorUtils';
 
@@ -148,12 +148,7 @@ describe('audioPlaybackUtils', () => {
         return audio;
       });
 
-      try {
-        await playUniversal(mockAdapter, blob, successResult);
-      } catch (error) {
-        // Expected to throw
-      }
-
+      await expect(playUniversal(mockAdapter, blob, successResult)).rejects.toThrow();
       expect(mockAudio.removeEventListener).toHaveBeenCalledWith('ended', expect.any(Function));
       expect(mockAudio.removeEventListener).toHaveBeenCalledWith('error', expect.any(Function));
     });

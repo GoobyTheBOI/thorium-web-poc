@@ -1,14 +1,13 @@
 import type {
     IAdapterConfig,
     ITextProcessor,
-    ITTSError,
     IPlaybackAdapter,
     IVoiceProvider,
     VoiceInfo
 } from '@/preferences/types';
 import { TextChunk } from '@/preferences/types';
 import { VoiceManagementService } from '@/lib/services/VoiceManagementService';
-import { extractErrorMessage, createNetworkAwareError, createError, handleDevelopmentError } from '@/lib/utils/errorUtils';
+import { createNetworkAwareError, createError, handleDevelopmentError } from '@/lib/utils/errorUtils';
 import { playUniversal, TextToAudioAdapter } from '@/lib/utils/audioPlaybackUtils';
 
 interface PlayRequestConfig {
@@ -33,7 +32,7 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
     private readonly eventListeners: Map<string, ((info: unknown) => void)[]> = new Map();
 
     private currentAudio: HTMLAudioElement | null = null;
-    private isPlaying: boolean = false;
+    public isPlaying: boolean = false;
     private isPaused: boolean = false;
 
     // Implement voices property for legacy support
@@ -53,6 +52,15 @@ export class ElevenLabsAdapter implements IPlaybackAdapter, TextToAudioAdapter {
             getVoicesByGender: (gender: 'male' | 'female') => this.getVoicesByGender(gender),
             getCurrentVoiceGender: () => this.getCurrentVoiceGender()
         };
+    }
+    processTextChunk(chunk: TextChunk): Promise<ArrayBuffer> {
+        throw new Error('Method not implemented.');
+    }
+    startPlayback(data: ArrayBuffer): void {
+        throw new Error('Method not implemented.');
+    }
+    stopPlayback(): void {
+        throw new Error('Method not implemented.');
     }
 
     // Private voice methods - only available through voices property

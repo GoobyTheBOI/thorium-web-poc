@@ -5,7 +5,6 @@ import {
   createNetworkAwareError,
   handleDevelopmentError
 } from '@/lib/utils/errorUtils';
-import { ITTSError } from '@/preferences/types';
 
 // Mock process.env
 const mockEnv = (env: string) => {

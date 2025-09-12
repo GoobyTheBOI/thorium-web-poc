@@ -1,16 +1,14 @@
 'use client';
 
-import { useAppSelector, useAppDispatch, RootState } from "@edrlab/thorium-web/epub";
-import { TtsActionKeys } from "../../keys";
+import { useAppSelector, useAppDispatch, RootState, StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
+import { TtsActionKeys } from "@/app/epub/keys";
 import React, { useCallback, useState, useEffect } from "react";
 import { ThContainerHeader, ThPopover, ThCloseButton, ThContainerBody } from "@edrlab/thorium-web/core/components";
-import { StatefulActionContainerProps } from "@edrlab/thorium-web/epub";
 import { KeyboardShortcut } from "@/lib/handlers/KeyboardHandler";
 import { TtsState } from '@/lib/managers/TtsStateManager';
 import styles from "./ActivateTtsContainer.module.css";
-
 import { useTts } from "@/Components/Actions/TTS/hooks";
-import { TtsProviderSelector, TtsVoicePanel, TtsControlPanel, TtsStatusDisplay, TtsToggle } from "../../../../Components/Actions/TTS";
+import { TtsProviderSelector, TtsVoicePanel, TtsControlPanel, TtsStatusDisplay, TtsToggle } from "@/Components/Actions/TTS";
 
 export const ActivateTtsContainer: React.FC<StatefulActionContainerProps> = (props) => {
     const dispatch = useAppDispatch();

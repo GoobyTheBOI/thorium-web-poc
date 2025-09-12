@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { TEST_CONFIG, createTestUrl } from '../../../../lib/constants/testConstants';
 
 // Mock URL constructor for tests

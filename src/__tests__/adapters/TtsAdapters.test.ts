@@ -2,8 +2,7 @@ import { ElevenLabsAdapter } from '../../lib/adapters/ElevenLabsAdapter';
 import { AzureAdapter } from '../../lib/adapters/AzureAdapter';
 import { DefaultTextProcessor } from '../../lib/TextProcessor';
 import { VoiceManagementService } from '../../lib/services/VoiceManagementService';
-import type { ITextProcessor } from '../../preferences/types';
-import type { TextChunk } from '../../types/tts';
+import type { ITextProcessor, TextChunk } from '../../preferences/types';
 
 // Mock ElevenLabs SDK
 jest.mock('@elevenlabs/elevenlabs-js', () => ({
@@ -397,7 +396,8 @@ describe('TTS Adapters - SOLID Architecture', () => {
       // Should only have public methods defined in interfaces
       const expectedMethods = [
         'play', 'pause', 'resume', 'stop', 'destroy', 'on', 'off',
-        'getIsPlaying', 'getIsPaused', 'getCurrentAudio', 'playTextChunk'
+        'getIsPlaying', 'getIsPaused', 'getCurrentAudio', 'playTextChunk',
+        'processTextChunk', 'startPlayback', 'stopPlayback'
       ];
 
       // Private/internal methods that shouldn't be part of the public interface

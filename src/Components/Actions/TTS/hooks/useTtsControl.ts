@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
 import { AdapterType } from '@/lib/factories/AdapterFactory';
 import { TTSServices } from '@/lib/factories/TTSServicesFactory';
-import { TtsReducerState } from '@/lib/ttsReducer';
 import {
   setIsGenerating,
-  setVoicesError
+  setVoicesError,
+  TtsReducerState
 } from '@/lib/ttsReducer';
 import { extractErrorMessage } from '@/lib/utils/errorUtils';
 
@@ -26,7 +26,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
       handleError('TTS is uitgeschakeld. Schakel TTS eerst in om audio te genereren.');
       return;
     }
-    
+
     if (!state.selectedVoice) {
       handleError('Please select a voice');
       return;
@@ -72,7 +72,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     if (!state.isEnabled) {
       return; // Silently ignore if TTS is disabled
     }
-    
+
     if (canPause()) {
       const { orchestrationService } = getServices();
       orchestrationService.pauseReading();
@@ -83,7 +83,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
     if (!state.isEnabled) {
       return; // Silently ignore if TTS is disabled
     }
-    
+
     if (canResume()) {
       const { orchestrationService } = getServices();
       orchestrationService.resumeReading();

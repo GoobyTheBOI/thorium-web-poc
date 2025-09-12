@@ -4,7 +4,7 @@ import layoutPresetsStyles from "../../Settings/LayoutPresets/assets/styles/layo
 
 import { PlaygroundActionsKeys } from "@/preferences/preferences";
 
-import { 
+import {
   StatefulActionContainerProps,
   StatefulSheetWrapper,
   useDocking,
@@ -19,13 +19,13 @@ import { PlaygroundLayoutPresetsGroup } from "../../Settings/LayoutPresets/Playg
 export const PlaygroundLayoutPresetsContainer = ({ triggerRef }: StatefulActionContainerProps) => {
   const actionState = useAppSelector(state => state.actions.keys[PlaygroundActionsKeys.layoutPresets]);
   const dispatch = useAppDispatch();
-  
+
   const docking = useDocking(PlaygroundActionsKeys.layoutPresets);
   const sheetType = docking.sheetType;
 
   const { t } = useI18n("playground");
 
-  const setOpen = (value: boolean) => {    
+  const setOpen = (value: boolean) => {
     dispatch(setActionOpen({
       key: PlaygroundActionsKeys.layoutPresets,
       isOpen: value
@@ -36,23 +36,21 @@ export const PlaygroundLayoutPresetsContainer = ({ triggerRef }: StatefulActionC
   }
 
   return(
-    <>
-    <StatefulSheetWrapper 
+    <StatefulSheetWrapper
       sheetType={ sheetType }
       sheetProps={ {
         id: PlaygroundActionsKeys.layoutPresets,
         triggerRef: triggerRef,
         heading: t("reader.layoutPresets.heading"),
         className: layoutPresetsStyles.readerSettings,
-        placement: "bottom", 
+        placement: "bottom",
         isOpen: actionState?.isOpen || false,
-        onOpenChange: setOpen, 
+        onOpenChange: setOpen,
         onClosePress: () => setOpen(false),
         docker: docking.getDocker()
       } }
     >
       <PlaygroundLayoutPresetsGroup />
     </StatefulSheetWrapper>
-    </>
   )
 }

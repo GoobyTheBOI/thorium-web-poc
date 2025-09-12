@@ -87,7 +87,6 @@ export default function Home() {
       />
 
       { MANIFEST_CONFIG.enabled && (
-        <>
         <div className="dev-books">
           <p>In dev you can also use the <code>/manifest/</code> route to load any publication. For instance:</p>
 
@@ -104,7 +103,6 @@ export default function Home() {
             ) }
           />
         </div>
-        </>
       ) }
     </main>
   );

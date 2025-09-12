@@ -13,7 +13,7 @@ type Props = {
   params: Promise<Params>;
 };
 
-export default function ManifestPage({ params }: Props) {
+export default function ManifestPage({ params }: Readonly<Props>) {
   const isLoading = useAppSelector(state => state.reader.isLoading);
   const manifestUrl = use(params).manifest;
 

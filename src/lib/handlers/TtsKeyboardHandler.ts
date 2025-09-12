@@ -1,7 +1,7 @@
 import { KeyboardHandler, KeyboardShortcut } from './KeyboardHandler';
 import { ITtsOrchestrationService } from '../services/TtsOrchestrationService';
 import { INTERACTION_CONSTANTS } from '../constants/uiConstants';
-import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
+import { handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export class TtsKeyboardHandler {
     private readonly keyboardHandler: KeyboardHandler;

@@ -1,4 +1,4 @@
-import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
+import { handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export interface TtsState {
     isPlaying: boolean;

@@ -1,5 +1,5 @@
 import { IPlaybackAdapter, VoiceInfo } from '@/preferences/types';
-import { extractErrorMessage, handleDevelopmentError } from '@/lib/utils/errorUtils';
+import { handleDevelopmentError } from '@/lib/utils/errorUtils';
 
 export interface VoiceChangeCallback {
     onVoiceChanged?: (voiceId: string, voiceInfo?: VoiceInfo) => void;
