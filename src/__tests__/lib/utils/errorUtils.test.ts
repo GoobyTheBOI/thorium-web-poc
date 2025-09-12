@@ -6,18 +6,13 @@ import {
   handleDevelopmentError
 } from '@/lib/utils/errorUtils';
 
-// Mock process.env
-const mockEnv = (env: string) => {
-  const originalEnv = process.env.NODE_ENV;
-  Object.defineProperty(process.env, 'NODE_ENV', {
-    value: env,
-    configurable: true
-  });
+// Mock process.env using Jest
+const originalEnv = process.env;
+
+const mockEnv = (env: 'development' | 'production' | 'test') => {
+  process.env = { ...originalEnv, NODE_ENV: env };
   return () => {
-    Object.defineProperty(process.env, 'NODE_ENV', {
-      value: originalEnv,
-      configurable: true
-    });
+    process.env = originalEnv;
   };
 };
 
