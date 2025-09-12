@@ -97,41 +97,29 @@ export class DefaultTextProcessor implements ITextProcessor {
  */
 export class ElevenLabsTextProcessor implements ITextProcessor {
     formatText(text: string, elementType: string): string {
-        // Handle null/undefined input gracefully
         if (!text || typeof text !== 'string') {
             return '';
         }
 
-        // Normalize whitespace and clean text
         const normalizedText = text
             .replace(/\s+/g, ' ')
             .replace(/[\n\r\t\u00a0]/g, ' ')
             .trim();
 
         const detectedType = this.detectElementType(elementType);
-        // ElevenLabs text formatting is tracked through the processing pipeline
-        // No logging needed for internal operations
 
         switch (detectedType) {
             case 'heading':
-                // For headings, add extra emphasis with punctuation and spacing
                 return `... ${normalizedText.toUpperCase()} ...`;
 
             case 'paragraph':
-                // Add natural pause with punctuation
                 return `${normalizedText}.`;
 
             case 'italic':
-                // For italic, add subtle emphasis with commas for natural pauses
                 return `— ${normalizedText} —`;
 
             case 'bold':
-                // For bold, use ALL CAPS or repeat for emphasis
                 return `${normalizedText.toUpperCase()}!`;
-
-            case 'code':
-                // For code, spell it out more clearly with spacing
-                return `Code: ${normalizedText.split('').join(' ')}`;
 
             default:
                 return normalizedText;
