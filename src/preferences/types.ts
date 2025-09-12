@@ -35,10 +35,6 @@ export interface IAudioPlayback {
     getCurrentAudio?(): HTMLAudioElement | null;
 }
 
-export interface IPlaybackAdapter {
-    processTextChunk(chunk: TextChunk): Promise<ArrayBuffer>;
-}
-
 export interface VoiceInfo {
     id: string;
     name: string;
