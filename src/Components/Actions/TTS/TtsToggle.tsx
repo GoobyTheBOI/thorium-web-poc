@@ -18,7 +18,7 @@ export const TtsToggle: React.FC<TtsToggleProps> = ({
   onToggle
 }) => {
   const getToggleButtonText = (): string => {
-    return isEnabled ? 'TTS Aan' : 'TTS Uit';
+    return isEnabled ? 'TTS On' : 'TTS Off';
   };
 
   const getToggleButtonStyle = () => {
@@ -31,11 +31,11 @@ export const TtsToggle: React.FC<TtsToggleProps> = ({
   };
 
   const getStatusMessage = (): string => {
-    if (!isEnabled) return 'Text-to-Speech uitgeschakeld';
-    if (isGenerating) return 'Audio wordt gegenereerd...';
-    if (isPlaying) return 'Text-to-Speech actief';
-    if (isPaused) return 'Text-to-Speech gepauzeerd';
-    return 'Text-to-Speech gereed';
+    if (!isEnabled) return 'Text-to-Speech disabled';
+    if (isGenerating) return 'Generating audio...';
+    if (isPlaying) return 'Text-to-Speech active';
+    if (isPaused) return 'Text-to-Speech paused';
+    return 'Text-to-Speech ready';
   };
 
   return (
@@ -44,11 +44,11 @@ export const TtsToggle: React.FC<TtsToggleProps> = ({
         <ThActionButton
           onPress={onToggle}
           style={getToggleButtonStyle()}
-          aria-label={`Text-to-Speech ${isEnabled ? 'uitschakelen' : 'inschakelen'}`}
+          aria-label={`Text-to-Speech ${isEnabled ? 'disable' : 'enable'}`}
         >
           {getToggleButtonText()}
         </ThActionButton>
-        
+
         <div className={styles.statusIndicator}>
           <span className={`${styles.statusText} ${isEnabled ? styles.enabled : styles.disabled}`}>
             {getStatusMessage()}
@@ -56,10 +56,10 @@ export const TtsToggle: React.FC<TtsToggleProps> = ({
           <div className={`${styles.statusDot} ${isEnabled ? styles.enabledDot : styles.disabledDot}`} />
         </div>
       </div>
-      
+
       {!isEnabled && (
         <div className={styles.disabledNotice}>
-          <small>🔇 Om te luisteren naar het boek, schakel eerst TTS in</small>
+          <small>🔇 To listen to the book, first enable TTS</small>
         </div>
       )}
     </div>

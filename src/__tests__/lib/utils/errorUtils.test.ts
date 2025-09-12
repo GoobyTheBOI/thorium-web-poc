@@ -179,7 +179,7 @@ describe('errorUtils', () => {
       const result = createNetworkAwareError(networkError, 'ElevenLabs');
 
       expect(result.code).toBe('NETWORK_ERROR');
-      expect(result.message).toContain('Geen internetverbinding beschikbaar');
+      expect(result.message).toContain('No internet connection available');
     });
 
     it('should create API auth error for 401 errors', () => {
@@ -187,7 +187,7 @@ describe('errorUtils', () => {
       const result = createNetworkAwareError(authError, 'ElevenLabs');
 
       expect(result.code).toBe('API_AUTH_ERROR');
-      expect(result.message).toContain('Ongeldige API-sleutel voor ElevenLabs');
+      expect(result.message).toContain('Invalid API key for ElevenLabs');
     });
 
     it('should create API error for other API errors', () => {
@@ -195,7 +195,7 @@ describe('errorUtils', () => {
       const result = createNetworkAwareError(apiError, 'Azure Speech');
 
       expect(result.code).toBe('API_ERROR');
-      expect(result.message).toContain('Azure Speech API fout');
+      expect(result.message).toContain('Azure Speech API error');
       expect(result.message).toContain('500 Internal Server Error');
     });
 
@@ -204,7 +204,7 @@ describe('errorUtils', () => {
       const result = createNetworkAwareError(unknownError, 'ElevenLabs');
 
       expect(result.code).toBe('PLAYBACK_FAILED');
-      expect(result.message).toContain('Kan geen audio genereren met ElevenLabs');
+      expect(result.message).toContain('Unable to generate audio with ElevenLabs');
     });
 
     it('should handle Azure Speech provider correctly', () => {
@@ -212,7 +212,7 @@ describe('errorUtils', () => {
       const result = createNetworkAwareError(unknownError, 'Azure Speech');
 
       expect(result.code).toBe('PLAYBACK_FAILED');
-      expect(result.message).toContain('Kan geen audio genereren met Azure Speech');
+      expect(result.message).toContain('Unable to generate audio with Azure Speech');
     });
 
     it('should handle non-Error inputs', () => {
@@ -220,7 +220,7 @@ describe('errorUtils', () => {
       const result = createNetworkAwareError(stringError, 'ElevenLabs');
 
       expect(result.code).toBe('PLAYBACK_FAILED');
-      expect(result.message).toContain('Kan geen audio genereren met ElevenLabs');
+      expect(result.message).toContain('Unable to generate audio with ElevenLabs');
     });
 
     it('should include details in development mode', () => {

@@ -1,6 +1,5 @@
-import React, { SelectHTMLAttributes, ReactNode } from 'react';
+import React, { SelectHTMLAttributes, ReactNode, useId } from 'react';
 import styles from './Select.module.css';
-import { randomUUID } from 'crypto';
 
 export interface SelectOption {
     value: string;
@@ -48,13 +47,13 @@ export const Select: React.FC<SelectProps> = ({
     disabled,
     ...rest
 }) => {
+    const generatedId = useId();
+
     const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         onChange?.(event.target.value);
     };
 
-    const selectId = rest.id || `select-${
-       randomUUID()
-    }`;
+    const selectId = rest.id || `select-${generatedId}`;
 
     const selectClasses = [
         styles.select,

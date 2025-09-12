@@ -17,9 +17,9 @@ jest.mock('@/lib/utils/errorUtils', () => ({
       error.message.includes('API down') ||
       error.message.includes('API failure')
     )) {
-      return new Error('Geen internetverbinding beschikbaar');
+      return new Error('No internet connection available');
     }
-    return new Error(`Kan geen audio genereren met ${provider}`);
+    return new Error(`Unable to generate audio with ${provider}`);
   }),
   extractErrorMessage: jest.fn(),
 }));
@@ -106,7 +106,7 @@ describe('VoiceManagementService', () => {
       const error = new Error('Readium error');
       (getVoices as jest.Mock).mockRejectedValue(error);
 
-      await expect(service.loadRediumVoices()).rejects.toThrow('Kan geen audio genereren met ElevenLabs');
+      await expect(service.loadRediumVoices()).rejects.toThrow('Unable to generate audio with ElevenLabs');
     });
   });
 
@@ -131,14 +131,14 @@ describe('VoiceManagementService', () => {
       };
       (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(service.loadElevenLabsVoices()).rejects.toThrow('Kan geen audio genereren met ElevenLabs');
+      await expect(service.loadElevenLabsVoices()).rejects.toThrow('Unable to generate audio with ElevenLabs');
     });
 
     it('should handle network error when loading ElevenLabs voices', async () => {
       const error = new Error('Network error');
       (fetch as jest.Mock).mockRejectedValue(error);
 
-      await expect(service.loadElevenLabsVoices()).rejects.toThrow('Geen internetverbinding beschikbaar');
+      await expect(service.loadElevenLabsVoices()).rejects.toThrow('No internet connection available');
     });
 
     it('should handle non-ok response without specific error message', async () => {
@@ -148,7 +148,7 @@ describe('VoiceManagementService', () => {
       };
       (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(service.loadElevenLabsVoices()).rejects.toThrow('Kan geen audio genereren met ElevenLabs');
+      await expect(service.loadElevenLabsVoices()).rejects.toThrow('Unable to generate audio with ElevenLabs');
     });
   });
 
@@ -173,14 +173,14 @@ describe('VoiceManagementService', () => {
       };
       (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(service.loadAzureVoices()).rejects.toThrow('Kan geen audio genereren met Azure Speech');
+      await expect(service.loadAzureVoices()).rejects.toThrow('Unable to generate audio with Azure Speech');
     });
 
     it('should handle network error when loading Azure voices', async () => {
       const error = new Error('Azure network error');
       (fetch as jest.Mock).mockRejectedValue(error);
 
-      await expect(service.loadAzureVoices()).rejects.toThrow('Geen internetverbinding beschikbaar');
+      await expect(service.loadAzureVoices()).rejects.toThrow('No internet connection available');
     });
 
     it('should handle non-ok response without specific error message', async () => {
@@ -190,7 +190,7 @@ describe('VoiceManagementService', () => {
       };
       (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(service.loadAzureVoices()).rejects.toThrow('Kan geen audio genereren met Azure Speech');
+      await expect(service.loadAzureVoices()).rejects.toThrow('Unable to generate audio with Azure Speech');
     });
   });
 
@@ -313,7 +313,7 @@ describe('VoiceManagementService', () => {
         .mockResolvedValueOnce(mockElevenLabsResponse)
         .mockRejectedValueOnce(new Error('Azure API down'));
 
-      await expect(service.getVoicesByGender('female')).rejects.toThrow('Geen internetverbinding beschikbaar');
+      await expect(service.getVoicesByGender('female')).rejects.toThrow('No internet connection available');
     });
   });
 
@@ -417,7 +417,7 @@ describe('VoiceManagementService', () => {
       (fetch as jest.Mock)
         .mockRejectedValueOnce(new Error('API failure'));
 
-      await expect(service.getCurrentVoiceGender()).rejects.toThrow('Geen internetverbinding beschikbaar');
+      await expect(service.getCurrentVoiceGender()).rejects.toThrow('No internet connection available');
     });
   });
 });

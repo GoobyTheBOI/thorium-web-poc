@@ -121,6 +121,11 @@ export class ElevenLabsTextProcessor implements ITextProcessor {
             case 'bold':
                 return `${normalizedText.toUpperCase()}!`;
 
+            case 'code':
+                // Space out characters for better code pronunciation
+                const spacedText = normalizedText.split('').join(' ');
+                return `Code: ${spacedText}`;
+
             default:
                 return normalizedText;
         }

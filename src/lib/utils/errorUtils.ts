@@ -51,7 +51,7 @@ export function createNetworkAwareError(
     if (isNetworkError(error)) {
         return createError(
             'NETWORK_ERROR',
-            'Geen internetverbinding beschikbaar. Controleer uw netwerkverbinding en probeer opnieuw.',
+            'No internet connection available. Please check your network connection and try again.',
             error
         );
     }
@@ -61,7 +61,7 @@ export function createNetworkAwareError(
         if (error.message.includes('API Error: 401')) {
             return createError(
                 'API_AUTH_ERROR',
-                `Ongeldige API-sleutel voor ${providerName}. Controleer uw configuratie.`,
+                `Invalid API key for ${providerName}. Please check your configuration.`,
                 error
             );
         }
@@ -69,7 +69,7 @@ export function createNetworkAwareError(
         if (error.message.includes('API Error:')) {
             return createError(
                 'API_ERROR',
-                `${providerName} API fout: ${error.message}`,
+                `${providerName} API error: ${error.message}`,
                 error
             );
         }
@@ -79,7 +79,7 @@ export function createNetworkAwareError(
     const providerAction = providerName === 'ElevenLabs' ? 'ElevenLabs' : 'Azure Speech';
     return createError(
         'PLAYBACK_FAILED',
-        `Kan geen audio genereren met ${providerAction}. Probeer opnieuw of selecteer een andere TTS-provider.`,
+        `Unable to generate audio with ${providerAction}. Please try again or select a different TTS provider.`,
         error
     );
 }

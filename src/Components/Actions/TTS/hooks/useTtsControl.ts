@@ -23,7 +23,7 @@ export function useTtsControl({ state, getServices, dispatch, onError }: UseTtsC
 
   const generateTts = useCallback(async () => {
     if (!state.isEnabled) {
-      handleError('TTS is uitgeschakeld. Schakel TTS eerst in om audio te genereren.');
+      handleError('TTS is disabled. Please enable TTS first to generate audio.');
       return;
     }
 

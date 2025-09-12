@@ -149,7 +149,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
             await adapter.voices.setVoice(maleVoiceId);
             await adapter.play({ text: 'Mannelijke test tekst', element: 'normal' });
 
-            // Controleer dat de juiste voiceId wordt gebruikt
+            // Verify that the correct voiceId is used
             expect(mockFetch).toHaveBeenCalledWith(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS,
                 expect.objectContaining({
                     body: expect.stringContaining(`"voiceId":"${maleVoiceId}"`)
@@ -160,7 +160,7 @@ describe('ElevenLabsAdapter Voice Selection', () => {
             await adapter.voices.setVoice(femaleVoiceId);
             await adapter.play({ text: 'Vrouwelijke test tekst', element: 'normal' });
 
-            // Controleer dat vrouwelijke stem wordt gebruikt
+            // Verify that female voice is used
             expect(mockFetch).toHaveBeenCalledWith(TEST_CONFIG.API_ENDPOINTS.ELEVENLABS_TTS,
                 expect.objectContaining({
                     body: expect.stringContaining(`"voiceId":"${femaleVoiceId}"`)
