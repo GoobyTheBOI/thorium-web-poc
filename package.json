@@ -41,6 +41,7 @@
     "@readium/navigator-html-injectables": "2.0.0",
     "@readium/shared": "2.0.0",
     "@reduxjs/toolkit": "^2.8.2",
+    "husky": "^9.1.7",
     "microsoft-cognitiveservices-speech-sdk": "^1.45.0",
     "motion": "^12.23.12",
     "next": "15.4.5",
@@ -72,9 +73,19 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
+    "lint-staged": "^16.1.6",
     "node-mocks-http": "^1.17.2",
+    "prettier": "^3.6.2",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ],
+    "*.{js,jsx,ts,tsx,json,css,md}": [
+      "prettier --write"
+    ]
   }
 }
