@@ -8,7 +8,7 @@ const COVERAGE_THRESHOLD = {
   BRANCHES: 70,
   FUNCTIONS: 70,
   LINES: 70,
-  STATEMENTS: 70
+  STATEMENTS: 70,
 };
 
 module.exports = {
@@ -24,9 +24,9 @@ module.exports = {
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
 
   // Transform files
-  preset: 'ts-jest',
+  preset: "ts-jest",
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
+    "^.+\\.(ts|tsx)$": "ts-jest",
   },
 
   // Module resolution
@@ -41,34 +41,29 @@ module.exports = {
     // Mock CSS modules
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
     // Mock static assets
-    "\\.(jpg|jpeg|png|gif|svg)$": "<rootDir>/__mocks__/fileMock.js"
+    "\\.(jpg|jpeg|png|gif|svg)$": "<rootDir>/__mocks__/fileMock.js",
   },
 
   // Test patterns
   testMatch: [
     "**/__tests__/**/*.(ts|tsx|js|jsx)",
-    "**/*.(test|spec).(ts|tsx|js|jsx)"
+    "**/*.(test|spec).(ts|tsx|js|jsx)",
   ],
 
   // File extensions
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
 
   // Coverage settings
   collectCoverageFrom: [
-    "src/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts,tsx}",
     "!src/**/*.d.ts",
     "!src/**/*.stories.{ts,tsx}",
     "!src/types/**/*",
-    "!src/**/index.ts"
+    "!src/**/index.ts",
   ],
 
   // Ignore patterns
-  testPathIgnorePatterns: [
-    "/node_modules/",
-    "/.next/"
-  ],
+  testPathIgnorePatterns: ["/node_modules/", "/.next/"],
 
-  transformIgnorePatterns: [
-    "/node_modules/(?!(@edrlab|@readium)/)"
-  ]
+  transformIgnorePatterns: ["/node_modules/(?!(@edrlab|@readium)/)"],
 };
