@@ -31,7 +31,8 @@
     "locales": "cpx \"node_modules/@edrlab/thorium-web/dist/locales/**/*\" public/locales/ && cpx \"src/resources/locales/**/*\" public/locales/",
     "postinstall": "pnpm locales",
     "test": "jest",
-    "sonar": "jest --coverage --coverageReporters=lcov && sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=XXXX -Dsonar.projectKey=GoobyTheBOI_thorium-web-poc_17da8af6-c5d1-4236-ad9b-899c78b25f99 -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
+    "sonar": "jest --coverage --coverageReporters=lcov && sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=XXXX -Dsonar.projectKey=GoobyTheBOI_thorium-web-poc_17da8af6-c5d1-4236-ad9b-899c78b25f99 -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info",
+    "prepare": "husky"
   },
   "dependencies": {
     "@edrlab/thorium-web": "1.0.0",
