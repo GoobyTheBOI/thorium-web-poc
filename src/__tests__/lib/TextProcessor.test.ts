@@ -1,6 +1,6 @@
 import { DefaultTextProcessor, ElevenLabsTextProcessor } from '../../lib/TextProcessor';
 import { TTS_CONSTANTS } from '@/preferences/constants';
-import { TEST_CONFIG } from '../../lib/constants/testConstants';
+import { TEST_CONFIG } from '@/lib/constants/testConstants';
 
 describe('DefaultTextProcessor - SOLID Architecture', () => {
   let processor: DefaultTextProcessor;
@@ -220,7 +220,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
       ];
 
       invalidTexts.forEach(text => {
-        expect(processor.validateText(text as unknown)).toBe(false);
+        expect(processor.validateText(text as unknown as string)).toBe(false);
       });
     });
 
@@ -228,7 +228,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
       const nonStringInputs = [123, {}, [], true, false, () => {}];
 
       nonStringInputs.forEach(input => {
-        expect(processor.validateText(input as unknown)).toBe(false);
+        expect(processor.validateText(input as unknown as string)).toBe(false);
       });
     });
 
@@ -267,8 +267,8 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
     });
 
     test('formatText handles null/undefined input gracefully', () => {
-      const resultNull = processor.formatText(null as unknown, 'normal');
-      const resultUndefined = processor.formatText(undefined as unknown, 'normal');
+      const resultNull = processor.formatText(null as unknown as string, 'normal');
+      const resultUndefined = processor.formatText(undefined as unknown as string, 'normal');
 
       expect(resultNull).toBe('');
       expect(resultUndefined).toBe('');
@@ -278,7 +278,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
       const nonStringInputs = [123, {}, [], true, false];
 
       nonStringInputs.forEach(input => {
-        const result = processor.formatText(input as unknown, 'normal');
+        const result = processor.formatText(input as unknown as string, 'normal');
         expect(result).toBe('');
       });
     });
@@ -289,8 +289,8 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
 
       // Test each invalid type without deep nesting
       for (const elementType of invalidTypes) {
-        expect(() => processor.formatText(text, elementType as unknown)).not.toThrow();
-        const result = processor.formatText(text, elementType as unknown);
+        expect(() => processor.formatText(text, elementType as unknown as string)).not.toThrow();
+        const result = processor.formatText(text, elementType as unknown as string);
         expect(result).toBe(TEST_CONFIG.TEST_DATA.SAMPLE_TEXT); // Should default to normal
       }
     });
@@ -335,7 +335,7 @@ describe('DefaultTextProcessor - SOLID Architecture', () => {
       const expectedMethods = ['formatText', 'validateText'];
 
       expectedMethods.forEach(method => {
-        expect(typeof (processor as unknown)[method]).toBe('function');
+        expect(typeof (processor as any)[method]).toBe('function');
       });
 
       expect(processor).not.toHaveProperty('play');

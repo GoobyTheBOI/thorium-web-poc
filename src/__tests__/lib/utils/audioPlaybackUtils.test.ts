@@ -68,7 +68,7 @@ describe('audioPlaybackUtils', () => {
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
         simulateAudioSuccess(audio);
-        return audio;
+        return audio as unknown as HTMLAudioElement;
       });
 
       const result = await playUniversal(mockAdapter, blob, successResult);
@@ -100,7 +100,7 @@ describe('audioPlaybackUtils', () => {
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
         simulateAudioError(audio, mockError);
-        return audio;
+        return audio as unknown as HTMLAudioElement;
       });
 
       (createError as jest.Mock).mockReturnValue({
@@ -131,7 +131,7 @@ describe('audioPlaybackUtils', () => {
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
         simulateAudioSuccess(audio);
-        return audio;
+        return audio as unknown as HTMLAudioElement;
       });
 
       await playUniversal(mockAdapter, blob, successResult);
@@ -148,7 +148,7 @@ describe('audioPlaybackUtils', () => {
       mockAdapter.setupAudioPlayback.mockImplementation(async () => {
         const audio = mockAudio;
         simulateAudioError(audio, mockError);
-        return audio;
+        return audio as unknown as HTMLAudioElement;
       });
 
       await expect(playUniversal(mockAdapter, blob, successResult)).rejects.toThrow();
