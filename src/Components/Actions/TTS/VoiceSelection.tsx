@@ -1,10 +1,7 @@
-import React from "react";
-import { Select } from "@/Components/UI/Select";
-import { VoiceInfo } from "@/preferences/types";
-import {
-  getLanguageDisplay,
-  getGenderDisplay,
-} from "@/Components/Actions/TTS/constants/voiceConstants";
+import React from 'react';
+import { Select } from '@/Components/UI/Select';
+import { VoiceInfo } from '@/preferences/types';
+import { getLanguageDisplay, getGenderDisplay } from '@/Components/Actions/TTS/constants/voiceConstants';
 
 interface VoiceSelectionProps {
   voices: VoiceInfo[];

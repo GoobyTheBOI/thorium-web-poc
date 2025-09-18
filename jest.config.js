@@ -53,13 +53,12 @@ module.exports = {
   // File extensions
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
 
-  // Coverage settings
+  // Coverage settings - Only collect coverage from lib folder
   collectCoverageFrom: [
     "src/lib/**/*.{ts,tsx}",
-    "!src/**/*.d.ts",
-    "!src/**/*.stories.{ts,tsx}",
-    "!src/types/**/*",
-    "!src/**/index.ts",
+    "!src/lib/**/*.d.ts",
+    "!src/lib/**/*.stories.{ts,tsx}",
+    "!src/lib/**/index.ts"
   ],
 
   // Ignore patterns
