@@ -88,7 +88,7 @@ Digital accessibility for people with reading difficulties or visual impairments
 - **Prettier**: Code formatting
 - **Husky**: Git hooks
 - **PNPM**: Package management
-- **Jest**: Testing framework with 86.11% coverage
+- **Jest**: Testing framework with 89.23% coverage
 - **TypeScript**: End-to-end type safety
 
 ## 🚀 Installation
@@ -178,7 +178,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 
 ```typescript
 // Programmatically select a voice
-voiceService.selectVoice('en-US-AriaNeural');
+voiceService.selectVoice("en-US-AriaNeural");
 
 // Load voices from provider
 const voices = await voiceService.loadAzureVoices();
@@ -189,10 +189,10 @@ const voices = await voiceService.loadAzureVoices();
 ```typescript
 // Custom TTS settings
 const ttsConfig = {
-  provider: 'elevenlabs',
-  voiceId: 'rachel-voice-id',
+  provider: "elevenlabs",
+  voiceId: "rachel-voice-id",
   speed: 1.2,
-  pitch: 1.0
+  pitch: 1.0,
 };
 ```
 
@@ -385,17 +385,19 @@ DEBUG_TTS=true
 
 ## 🧪 Testing
 
-The project has extensive test coverage with **86.11% overall coverage**:
+The project has extensive test coverage with **89.23% overall coverage**:
+
+Note: Coverage metrics only include the core business logic in lib and exclude UI components, configuration, and app folders.
 
 ### Current Test Metrics
 
 - **Test Suites**: 27 (all passing) ✅
 - **Total Tests**: 603 (all passing) ✅
-- **Coverage**: 86.11% overall lib folder coverage
-- **Statements**: 86.11%
-- **Branches**: 88.79%
-- **Functions**: 85.00%
-- **Lines**: 86.11%
+- **Coverage**: 89.23% overall lib folder coverage
+- **Statements**: 89.23%
+- **Branches**: 89.18%
+- **Functions**: 84.89%
+- **Lines**: 89.23%
 
 ### Test Types
 
@@ -431,67 +433,16 @@ __tests__/
 │   └── tts/
 │       ├── azure.test.ts
 │       └── elevenlabs.test.ts
-└── components/            # Component tests
 ```
 
 ### Coverage Requirements
 
-- **Statements**: 70%+
-- **Branches**: 70%+
-- **Functions**: 70%+
-- **Lines**: 70%+
+- **Statements**: 80%+
+- **Branches**: 80%+
+- **Functions**: 80%+
+- **Lines**: 80%+
 
 ## 🚀 Deployment
-
-### Vercel Deployment (Recommended)
-
-1. **Vercel account setup**
-
-```bash
-npm i -g vercel
-vercel login
-```
-
-1. **Project configuration**
-
-```bash
-vercel
-```
-
-1. **Environment variables**
-   - Go to your Vercel dashboard
-   - Add your API keys to environment variables
-   - Redeploy for changes
-
-### Docker Deployment
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-EXPOSE 3000
-
-CMD ["npm", "start"]
-```
-
-```bash
-# Build Docker image
-docker build -t thorium-tts-app .
-
-# Run container
-docker run -p 3000:3000 \
-  -e ELEVENLABS_API_KEY=your_key \
-  -e AZURE_API_KEY=your_key \
-  -e AZURE_REGION=eastus \
-  thorium-tts-app
-```
 
 ### Manual Deployment
 
@@ -503,124 +454,9 @@ pnpm build
 pnpm start
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! Follow these steps:
-
-### Development Workflow
-
-1. **Fork the project**
-
-```bash
-git clone https://github.com/your-username/thorium-web-poc.git
-```
-
-1. **Create a feature branch**
-
-```bash
-git checkout -b feature/amazing-feature
-```
-
-1. **Commit your changes**
-
-```bash
-git commit -m 'Add: amazing feature'
-```
-
-1. **Push to the branch**
-
-```bash
-git push origin feature/amazing-feature
-```
-
-1. **Open a Pull Request**
-
 ### Code Standards
 
 - **TypeScript**: All code must be type-safe
 - **ESLint**: Code must follow linting rules
 - **Tests**: New features must have tests
 - **Documentation**: Document complex functionality
-
-### Commit Convention
-
-Use [Conventional Commits](https://www.conventionalcommits.org/):
-
-```text
-type(scope): description
-
-feat(tts): add voice speed control
-fix(api): resolve Azure authentication issue
-docs(readme): update installation instructions
-test(integration): add voice selection tests
-```
-
-## 📄 License
-
-This project is licensed under the BSD-3-Clause License. See the [LICENSE](LICENSE) file for details.
-
-```text
-BSD 3-Clause License
-
-Copyright (c) 2024 Readium Foundation
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software...
-```
-
-## 📞 Contact
-
-### Project Maintainer
-
-**Name**: [Your Name]
-**Email**: [your.email@example.com]
-**LinkedIn**: [linkedin.com/in/your-profile]
-**GitHub**: [@GoobyTheBOI](https://github.com/GoobyTheBOI)
-
-### Project Links
-
-- **Repository**: [https://github.com/GoobyTheBOI/thorium-web-poc](https://github.com/GoobyTheBOI/thorium-web-poc)
-- **Issues**: [GitHub Issues](https://github.com/GoobyTheBOI/thorium-web-poc/issues)
-- **Documentation**: [Wiki](https://github.com/GoobyTheBOI/thorium-web-poc/wiki)
-
-### Support
-
-For questions, bugs, or feature requests:
-
-1. **Bug Reports**: Use GitHub Issues with the "bug" label
-2. **Feature Requests**: Use GitHub Issues with the "enhancement" label
-3. **Questions**: Start a GitHub Discussion
-4. **Email**: For direct questions and support
-
-### Acknowledgments
-
-This project was made possible by:
-
-- **Thorium Web Team** - Base EPUB reader implementation
-- **ElevenLabs** - High-quality TTS API
-- **Microsoft Azure** - Speech Services
-- **Readium Foundation** - EPUB standards and toolkit
-- **Next.js Team** - Excellent React framework
-
----
-
-## 📊 Project Status
-
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Test Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
-
-**Last Update**: September 2025
-**Status**: Active Development
-**Version**: 1.0.0
-**Test Suites**: 27 passing
-**Total Tests**: 603 passing
-**Code Coverage**: 86.11% (lib folder)
-
----
-
-*This documentation is regularly updated. Check the [changelog](CHANGELOG.md) for recent changes.*
