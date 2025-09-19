@@ -13,9 +13,6 @@ An advanced web-based EPUB reader built on Thorium Web with comprehensive Text-t
 - [Development](#development)
 - [Testing](#testing)
 - [Deployment](#deployment)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
 
 ## 🎯 About the Project
 
